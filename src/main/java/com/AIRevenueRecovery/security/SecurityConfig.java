@@ -64,7 +64,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "https://ai-revenue-recovery.vercel.app",
+                "https://ai-revenue-recovery-git-ea62a0-vishal-singhs-projects-a58aa2a5.vercel.app"
+        ));
         configuration.setAllowedMethods(
                 List.of(
                         "GET",
