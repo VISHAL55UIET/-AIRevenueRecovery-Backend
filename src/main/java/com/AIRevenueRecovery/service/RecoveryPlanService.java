@@ -15,21 +15,17 @@ import java.util.List;
 
 @Service
 public class RecoveryPlanService {
-
     private static final int DEFAULT_MAX_STEPS = 3;
     private static final int MAX_RETRY_COUNT = 3;
-
     private final RecoveryPlanRepository recoveryPlanRepository;
     private final RecoveryPlanStepRepository recoveryPlanStepRepository;
     private final PaymentRepository paymentRepository;
     private final AIRecoveryDecisionService aiRecoveryDecisionService;
-
     public RecoveryPlanService(
             RecoveryPlanRepository recoveryPlanRepository,
             RecoveryPlanStepRepository recoveryPlanStepRepository,
             PaymentRepository paymentRepository,
             AIRecoveryDecisionService aiRecoveryDecisionService) {
-
         this.recoveryPlanRepository = recoveryPlanRepository;
         this.recoveryPlanStepRepository = recoveryPlanStepRepository;
         this.paymentRepository = paymentRepository;

@@ -20,19 +20,16 @@ public class RevenueRecoveryService {
     private final RecoveryAttemptRepository recoveryAttemptRepository;
     private final RecoveryDecisionService recoveryDecisionService;
     private final AIRecoveryService aiRecoveryService;
-
     public RevenueRecoveryService(
             PaymentRepository paymentRepository,
             RecoveryAttemptRepository recoveryAttemptRepository,
             RecoveryDecisionService recoveryDecisionService,
             AIRecoveryService aiRecoveryService) {
-
         this.paymentRepository = paymentRepository;
         this.recoveryAttemptRepository = recoveryAttemptRepository;
         this.recoveryDecisionService = recoveryDecisionService;
         this.aiRecoveryService = aiRecoveryService;
     }
-
     @Transactional
     public RecoveryAttempt recoverPayment(Long paymentId) {
 

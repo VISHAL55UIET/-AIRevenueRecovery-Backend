@@ -218,36 +218,15 @@ public class RecoveryAnalyticsService {
             } else if ("FAILED".equalsIgnoreCase(
                     attempt.getResult())) {
 
-                int failed =
-                        ((Number) stats.get(
-                                "failed"
-                        )).intValue();
-
-                stats.put(
-                        "failed",
-                        failed + 1
-                );
-
+                int failed = ((Number) stats.get("failed")).intValue();
+                stats.put("failed", failed + 1);
             } else if ("PENDING".equalsIgnoreCase(
                     attempt.getResult())) {
-
-                int pending =
-                        ((Number) stats.get(
-                                "pending"
-                        )).intValue();
-
-                stats.put(
-                        "pending",
-                        pending + 1
-                );
+                int pending = ((Number) stats.get("pending")).intValue();
+                stats.put("pending", pending + 1);
             }
-
-            /*
-             * Keep first available AI recommendation.
-             */
             if (stats.get("recommendedAction") == null && attempt.getAiRecommendation() != null) {
-                stats.put("recommendedAction", attempt.getAiRecommendation()
-                );
+                stats.put("recommendedAction", attempt.getAiRecommendation());
             }
             if (stats.get("aiConfidence") == null && attempt.getAiConfidence() != null) {stats.put("aiConfidence", attempt.getAiConfidence());
             }

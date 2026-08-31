@@ -26,9 +26,7 @@ public class RecoveryEventService {
             throw new RuntimeException("Event type is required");
         }
         if (recoveryEvent.getCreatedAt() == null) {
-            recoveryEvent.setCreatedAt(
-                    LocalDateTime.now()
-            );
+            recoveryEvent.setCreatedAt(LocalDateTime.now());
         }
         return recoveryEventRepository.save(
                 recoveryEvent

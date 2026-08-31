@@ -28,9 +28,7 @@ public class RecoveryHistoryService {
                                                 + paymentId));
         List<RecoveryAttempt> attempts = recoveryAttemptRepository.findByPaymentId(paymentId);
         attempts.sort(Comparator.comparing(RecoveryAttempt::getAttemptNumber, Comparator.nullsLast(Comparator.reverseOrder())));
-        List<RecoveryAttemptHistoryResponse>
-                attemptResponses =
-                attempts.stream().map(this::mapAttempt).toList();
+        List<RecoveryAttemptHistoryResponse>attemptResponses = attempts.stream().map(this::mapAttempt).toList();
         boolean successful = "SUCCESS".equalsIgnoreCase(payment.getStatus().name());
         return new RecoveryHistoryResponse(
                 payment.getPaymentId(), payment.getStatus(), payment.getRetryCount(),

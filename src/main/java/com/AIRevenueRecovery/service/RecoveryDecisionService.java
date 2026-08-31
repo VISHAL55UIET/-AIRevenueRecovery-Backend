@@ -62,42 +62,30 @@ public class RecoveryDecisionService {
                 }
                 if (totalAttempts >= 5 && successRate < 20.0) {
                     return "REQUEST_ALTERNATE_PAYMENT";
-                }
-                return "RETRY_AFTER_BALANCE_CHECK";
-            case CARD_DECLINED:
-                if (retries >= 2) {
+                }return "RETRY_AFTER_BALANCE_CHECK";
+            case CARD_DECLINED: if (retries >= 2) {
                     return "REQUEST_ALTERNATE_PAYMENT";
-                }
-                if (totalAttempts >= 5
-                        && successRate < 15.0) {
-
-                    return "REQUEST_ALTERNATE_PAYMENT";
-                }
-
-                return "REQUEST_ALTERNATE_PAYMENT";
-
-            case NETWORK_ERROR:
-                if (retries <= 2) {
-                    return "RETRY_PAYMENT";
-                }
-                if (totalAttempts >= 5 && successRate < 10.0) {
-                    return "REQUEST_ALTERNATE_PAYMENT";
-                }
-                return "RETRY_AFTER_DELAY";
-
-            case BANK_ERROR:
-                if (retries <= 2) {
-                    return "RETRY_AFTER_DELAY";
                 }
                 if (totalAttempts >= 5 && successRate < 15.0) {
                     return "REQUEST_ALTERNATE_PAYMENT";
+                }
+                return "REQUEST_ALTERNATE_PAYMENT";
+            case NETWORK_ERROR:
+                if (retries <= 2) {return "RETRY_PAYMENT";
+                }
+                if (totalAttempts >= 5 && successRate < 10.0) {return "REQUEST_ALTERNATE_PAYMENT";
+                }
+                return "RETRY_AFTER_DELAY";
+            case BANK_ERROR:
+                if (retries <= 2) {return "RETRY_AFTER_DELAY";
+                }
+                if (totalAttempts >= 5 && successRate < 15.0) {return "REQUEST_ALTERNATE_PAYMENT";
                 }
                 return "RETRY_AFTER_DELAY";
             case FRAUD_DETECTED: return "BLOCK_RECOVERY";
             case UNKNOWN: return "MANUAL_REVIEW";
 
             default:
-
                 return "MANUAL_REVIEW";
         }
     }

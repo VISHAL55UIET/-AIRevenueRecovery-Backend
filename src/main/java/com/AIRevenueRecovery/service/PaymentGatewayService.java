@@ -14,17 +14,13 @@ public class PaymentGatewayService {
 
     private final RazorpayClient razorpayClient;
     private final String razorpayKeySecret;
-    public PaymentGatewayService(
-            @Value("${razorpay.key-id}") String keyId, @Value("${razorpay.key-secret}") String keySecret
-    ) {
+    public PaymentGatewayService(@Value("${razorpay.key-id}") String keyId, @Value("${razorpay.key-secret}") String keySecret) {
         try {
             this.razorpayClient = new RazorpayClient(keyId, keySecret);
             this.razorpayKeySecret = keySecret;
         } catch (RazorpayException exception) {
-            throw new IllegalStateException(
-                    "Failed to initialize Razorpay client",
-                    exception
-            );
+            throw new IllegalStateException("Failed to initialize Razorpay client",
+                    exception);
         }
     }
     public Order createOrder(Payment payment, int attemptNumber) {

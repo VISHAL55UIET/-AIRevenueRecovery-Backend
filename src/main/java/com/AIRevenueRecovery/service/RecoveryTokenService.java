@@ -16,8 +16,7 @@ public class RecoveryTokenService {
     }
     public RecoveryToken createToken(Payment payment) {
         RecoveryToken recoveryToken = new RecoveryToken();
-        recoveryToken.setToken(UUID.randomUUID().toString()
-        );
+        recoveryToken.setToken(UUID.randomUUID().toString());
         recoveryToken.setPayment(payment);
         recoveryToken.setCreatedAt(LocalDateTime.now());
         recoveryToken.setExpiresAt(LocalDateTime.now().plusHours(24));
@@ -25,39 +24,20 @@ public class RecoveryTokenService {
         return recoveryTokenRepository.save(recoveryToken);
     }
     public RecoveryToken getValidToken(String token) {
-        RecoveryToken recoveryToken =
-                recoveryTokenRepository
-                        .findByToken(token)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Recovery link is invalid"
-                                ));
-
+        RecoveryToken recoveryToken = recoveryTokenRepository.findByToken(token)
+                        .orElseThrow(() -> new RuntimeException("Recovery link is invalid"));
         if (recoveryToken.isUsed()) {
-
             throw new RuntimeException(
                     "Recovery link has already been used"
             );
         }
-
-        if (recoveryToken.getExpiresAt()
-                .isBefore(LocalDateTime.now())) {
-
-            throw new RuntimeException(
-                    "Recovery link has expired"
-            );
+        if (recoveryToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Recovery link has expired");
         }
-
         return recoveryToken;
     }
-
-    public void markAsUsed(
-            RecoveryToken recoveryToken) {
-
+    public void markAsUsed(RecoveryToken recoveryToken) {
         recoveryToken.setUsed(true);
-
-        recoveryTokenRepository.save(
-                recoveryToken
-        );
+        recoveryTokenRepository.save(recoveryToken);
     }
 }

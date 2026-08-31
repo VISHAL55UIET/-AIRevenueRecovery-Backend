@@ -15,10 +15,8 @@ import java.time.LocalDateTime;
 
 @Service
 public class RecoveryPlanStepExecutionService {
-
     private static final int MAX_RETRIES = 3;
     private static final int MAX_RECOVERY_STEPS = 3;
-
     private final RecoveryPlanStepRepository recoveryPlanStepRepository;
     private final PaymentRepository paymentRepository;
     private final PaymentGatewayService paymentGatewayService;

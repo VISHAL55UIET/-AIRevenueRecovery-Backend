@@ -11,9 +11,7 @@ public class RecoveryMetricsService {
 
     private final PaymentRepository paymentRepository;
     private final RecoveryAttemptRepository recoveryAttemptRepository;
-
-    public RecoveryMetricsService(PaymentRepository paymentRepository,
-            RecoveryAttemptRepository recoveryAttemptRepository) {
+    public RecoveryMetricsService(PaymentRepository paymentRepository, RecoveryAttemptRepository recoveryAttemptRepository) {
         this.paymentRepository = paymentRepository;
         this.recoveryAttemptRepository = recoveryAttemptRepository;
     }

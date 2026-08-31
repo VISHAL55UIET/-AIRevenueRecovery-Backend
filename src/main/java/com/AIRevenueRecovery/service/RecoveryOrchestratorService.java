@@ -13,10 +13,9 @@ public class RecoveryOrchestratorService {
     }
     @Transactional
     public void startRecovery(Payment payment) {
-        if (payment == null) {throw new IllegalArgumentException("Payment is required to start recovery");
-        }
-        if (payment.getId() == null) {throw new IllegalArgumentException("Payment must be persisted before recovery starts"
-            );
+        if (payment == null) {throw new IllegalArgumentException("Payment is required to start recovery");}
+        if (payment.getId() == null) {
+            throw new IllegalArgumentException("Payment must be persisted before recovery starts");
         }
         if (payment.getStatus() != PaymentStatus.FAILED) {
             return;
