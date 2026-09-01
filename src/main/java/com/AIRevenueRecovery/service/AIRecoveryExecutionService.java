@@ -6,7 +6,7 @@ import com.AIRevenueRecovery.entity.RecoveryAttempt;
 import com.AIRevenueRecovery.repository.PaymentRepository;
 import com.AIRevenueRecovery.repository.RecoveryAttemptRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -28,7 +28,6 @@ public class AIRecoveryExecutionService {
         this.recoveryAttemptRepository = recoveryAttemptRepository;
         this.aiRecoveryDecisionService = aiRecoveryDecisionService;
     }
-    @Transactional
     public Map<String, Object> executeRecovery(Long paymentId) {
         Payment payment =
                 paymentRepository.findById(paymentId).orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));

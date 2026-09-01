@@ -1,5 +1,7 @@
 package com.AIRevenueRecovery.entity;
 
+import com.AIRevenueRecovery.saga.RecoverySagaState;
+import com.AIRevenueRecovery.saga.RecoverySagaTransition;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -85,7 +87,6 @@ public class RecoverySaga {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
-
     public Long getId() {
         return id;
     }
@@ -103,7 +104,6 @@ public class RecoverySaga {
         this.sagaId = sagaId;
     }
 
-
     public Long getPaymentId() {
         return paymentId;
     }
@@ -111,7 +111,6 @@ public class RecoverySaga {
     public void setPaymentId(Long paymentId) {
         this.paymentId = paymentId;
     }
-
 
     public String getCurrentStep() {
         return currentStep;
@@ -121,7 +120,6 @@ public class RecoverySaga {
         this.currentStep = currentStep;
     }
 
-
     public String getStatus() {
         return status;
     }
@@ -130,7 +128,6 @@ public class RecoverySaga {
         this.status = status;
     }
 
-
     public String getAction() {
         return action;
     }
@@ -138,7 +135,6 @@ public class RecoverySaga {
     public void setAction(String action) {
         this.action = action;
     }
-
 
     public String getFailureReason() {
         return failureReason;
@@ -152,26 +148,86 @@ public class RecoverySaga {
     public String getErrorMessage() {
         return errorMessage;
     }
+
     public void setErrorMessage(String errorMessage) {
         this.errorMessage = errorMessage;
     }
+
     public LocalDateTime getStartedAt() {
         return startedAt;
     }
+
     public void setStartedAt(LocalDateTime startedAt) {
         this.startedAt = startedAt;
     }
+
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
+
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
+
+
+    // =========================================================
+    // COMPLETED AT
+    // =========================================================
+
     public LocalDateTime getCompletedAt() {
         return completedAt;
     }
 
     public void setCompletedAt(LocalDateTime completedAt) {
         this.completedAt = completedAt;
+    }
+
+
+    // =========================================================
+    // STATE MACHINE
+    // =========================================================
+
+    /**
+     * Safely transitions this Saga to the requested state.
+     *
+     * The transition is validated against the centralized
+     * RecoverySagaTransition rules before modifying the entity.
+     *
+     * Database representation remains String-based for backward
+     * compatibility with the existing MySQL/Railway schema.
+     */
+    public void transitionTo(RecoverySagaState nextState) {
+
+        if (nextState == null) {
+            throw new IllegalArgumentException(
+                    "Next Saga state cannot be null"
+            );
+        }
+
+        RecoverySagaState currentState;
+
+        try {
+            currentState = RecoverySagaState.valueOf(
+                    this.currentStep
+            );
+        } catch (IllegalArgumentException | NullPointerException exception) {
+
+            throw new IllegalStateException(
+                    "Unknown current Recovery Saga state: "
+                            + this.currentStep,
+                    exception
+            );
+        }
+        RecoverySagaTransition.validate(
+                currentState,
+                nextState
+        );
+        this.currentStep = nextState.name();
+        this.status = nextState.name();
+
+        this.updatedAt = LocalDateTime.now();
+        if (nextState == RecoverySagaState.COMPLETED) {
+            this.completedAt = LocalDateTime.now();
+        }
     }
 }

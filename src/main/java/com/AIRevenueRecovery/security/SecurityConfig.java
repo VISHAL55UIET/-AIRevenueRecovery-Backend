@@ -1,15 +1,20 @@
 package com.AIRevenueRecovery.security;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -20,37 +25,80 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
     private final CustomUserDetailsService userDetailsService;
+
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+
+    /*
+     * Frontend URL
+     *
+     * Local:
+     * http://localhost:5173
+     *
+     * Production:
+     * APP_FRONTEND_URL from Railway
+     */
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
+
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
             CustomUserDetailsService userDetailsService,
             OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler
     ) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.userDetailsService = userDetailsService;
-        this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
+
+        this.jwtAuthenticationFilter =
+                jwtAuthenticationFilter;
+
+        this.userDetailsService =
+                userDetailsService;
+
+        this.oAuth2LoginSuccessHandler =
+                oAuth2LoginSuccessHandler;
     }
+
+
+    // =====================================================
+    // AUTHENTICATION PROVIDER
+    // =====================================================
 
     @Bean
     public AuthenticationProvider authenticationProvider(
             org.springframework.security.crypto.password.PasswordEncoder passwordEncoder
     ) {
-        DaoAuthenticationProvider provider =
-                new DaoAuthenticationProvider(userDetailsService);
 
-        provider.setPasswordEncoder(passwordEncoder);
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider(
+                        userDetailsService
+                );
+
+        provider.setPasswordEncoder(
+                passwordEncoder
+        );
 
         return provider;
     }
+
+
+    // =====================================================
+    // AUTHENTICATION MANAGER
+    // =====================================================
 
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration configuration
     ) throws Exception {
-        return configuration.getAuthenticationManager();
+
+        return configuration
+                .getAuthenticationManager();
     }
+
+
+    // =====================================================
+    // SECURITY FILTER CHAIN
+    // =====================================================
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -59,11 +107,30 @@ public class SecurityConfig {
     ) throws Exception {
 
         http
-                .csrf(csrf -> csrf.disable())
+
+                // -------------------------------------------------
+                // CSRF
+                // -------------------------------------------------
+
+                .csrf(csrf ->
+                        csrf.disable()
+                )
+
+
+                // -------------------------------------------------
+                // CORS
+                // -------------------------------------------------
 
                 .cors(cors ->
-                        cors.configurationSource(corsConfigurationSource())
+                        cors.configurationSource(
+                                corsConfigurationSource()
+                        )
                 )
+
+
+                // -------------------------------------------------
+                // SESSION
+                // -------------------------------------------------
 
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
@@ -71,31 +138,66 @@ public class SecurityConfig {
                         )
                 )
 
+
+                // -------------------------------------------------
+                // AUTHORIZATION
+                // -------------------------------------------------
+
                 .authorizeHttpRequests(auth -> auth
 
-                        .requestMatchers("/api/auth/**")
+                        // Authentication APIs
+                        .requestMatchers(
+                                "/api/auth/**"
+                        )
                         .permitAll()
 
-                        .requestMatchers("/oauth2/**")
+
+                        // OAuth2
+                        .requestMatchers(
+                                "/oauth2/**"
+                        )
                         .permitAll()
 
-                        .requestMatchers("/login/**")
+
+                        .requestMatchers(
+                                "/login/**"
+                        )
                         .permitAll()
 
+
+                        // Swagger
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         )
                         .permitAll()
 
-                        .requestMatchers("/actuator/**")
+
+                        // Actuator
+                        .requestMatchers(
+                                "/actuator/**"
+                        )
                         .permitAll()
 
+
+                        // Everything else requires authentication
                         .anyRequest()
                         .authenticated()
                 )
 
-                .authenticationProvider(authenticationProvider)
+
+                // -------------------------------------------------
+                // AUTHENTICATION PROVIDER
+                // -------------------------------------------------
+
+                .authenticationProvider(
+                        authenticationProvider
+                )
+
+
+                // -------------------------------------------------
+                // GOOGLE OAUTH2
+                // -------------------------------------------------
 
                 .oauth2Login(oauth2 ->
                         oauth2.successHandler(
@@ -103,13 +205,24 @@ public class SecurityConfig {
                         )
                 )
 
+
+                // -------------------------------------------------
+                // JWT FILTER
+                // -------------------------------------------------
+
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
                 );
 
+
         return http.build();
     }
+
+
+    // =====================================================
+    // CORS CONFIGURATION
+    // =====================================================
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -117,31 +230,58 @@ public class SecurityConfig {
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:5173",
 
-                // Production Vercel frontend
-                "https://ai-revenue-recovery-frontend.vercel.app",
+        /*
+         * Allowed frontend origins
+         *
+         * Local development:
+         * http://localhost:5173
+         *
+         * Production:
+         * value comes from APP_FRONTEND_URL
+         * through application.properties
+         */
 
-                // Other Vercel URLs
-                "https://ai-revenue-recovery.vercel.app",
+        configuration.setAllowedOrigins(
+                List.of(
+                        "http://localhost:5173",
+                        frontendUrl
+                )
+        );
 
-                "https://ai-revenue-recovery-git-ea62a0-vishal-singhs-projects-a58aa2a5.vercel.app"
-        ));
 
-        configuration.setAllowedMethods(List.of(
-                "GET",
-                "POST",
-                "PUT",
-                "PATCH",
-                "DELETE",
-                "OPTIONS"
-        ));
+        // -------------------------------------------------
+        // HTTP METHODS
+        // -------------------------------------------------
 
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedMethods(
+                List.of(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE",
+                        "OPTIONS"
+                )
+        );
 
-        configuration.setAllowCredentials(true);
 
+        // -------------------------------------------------
+        // HEADERS
+        // -------------------------------------------------
+
+        configuration.setAllowedHeaders(
+                List.of("*")
+        );
+
+
+        // -------------------------------------------------
+        // CREDENTIALS
+        // -------------------------------------------------
+
+        configuration.setAllowCredentials(
+                true
+        );
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
 
@@ -149,6 +289,7 @@ public class SecurityConfig {
                 "/**",
                 configuration
         );
+
 
         return source;
     }
