@@ -1,4 +1,4 @@
 package com.AIRevenueRecovery.repository;
 
-public class RecoveryEventRepository {
+public class OutboxEventRepository {
 }
