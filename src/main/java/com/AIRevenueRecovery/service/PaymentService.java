@@ -20,21 +20,14 @@ import java.util.List;
 
 @Service
 public class PaymentService {
-
     private final PaymentRepository paymentRepository;
     private final CustomerRepository customerRepository;
     private final RecoveryOrchestratorService recoveryOrchestratorService;
     private final PaymentGatewayService paymentGatewayService;
     private final RecoveryAttemptRepository recoveryAttemptRepository;
-
-    public PaymentService(
-            PaymentRepository paymentRepository,
+    public PaymentService(PaymentRepository paymentRepository,
             CustomerRepository customerRepository,
-            RecoveryOrchestratorService recoveryOrchestratorService,
-            PaymentGatewayService paymentGatewayService,
-            RecoveryAttemptRepository recoveryAttemptRepository
-    ) {
-
+            RecoveryOrchestratorService recoveryOrchestratorService, PaymentGatewayService paymentGatewayService, RecoveryAttemptRepository recoveryAttemptRepository) {
         this.paymentRepository = paymentRepository;
         this.customerRepository = customerRepository;
         this.recoveryOrchestratorService =

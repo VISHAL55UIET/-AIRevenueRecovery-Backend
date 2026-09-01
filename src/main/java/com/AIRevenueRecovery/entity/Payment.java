@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import java.time.LocalDateTime;
-
 @Entity
 @Table(name = "payments")
 @Data
