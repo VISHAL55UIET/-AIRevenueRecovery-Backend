@@ -777,6 +777,148 @@ The goal is to prevent an external dependency failure from cascading through the
 
 ---
 
+# 🚦 API Rate Limiting
+Kafka Event Processing
+Transactional Outbox
+Razorpay Order Creation
+Razorpay Payment Verification
+Recovery Intelligence
+HTTP 429 Rate Limit Handling
+
+The payment API is protected with Resilience4j RateLimiter to prevent excessive request bursts.
+
+Current configuration:
+
+```text
+Payment API
+    ↓
+RateLimiter
+    ↓
+Allowed requests → Process
+Exceeded limit  → HTTP 429
+```
+
+The `paymentApi` limiter is configured with a fixed request limit per refresh period and zero wait time for rejected requests. This provides controlled failure instead of allowing unlimited payment requests.
+
+---
+
+# 📨 Event-Driven Processing
+
+Kafka is used for asynchronous event processing in the recovery workflow.
+
+```text
+Payment / Recovery Event
+        ↓
+     Kafka
+        ↓
+   Consumer
+        ↓
+Recovery Processing
+```
+
+Kafka producer reliability is configured with acknowledgements and producer retries. Consumer configuration uses a dedicated consumer group and starts from the earliest available offset.
+
+---
+
+# 📦 Transactional Outbox
+
+The project includes an Outbox Publisher configuration for durable event publication.
+
+```text
+Database Transaction
+        ↓
+   Outbox Record
+        ↓
+ Outbox Publisher
+        ↓
+      Kafka
+```
+
+The outbox publisher processes records in batches and supports retry limits, helping reduce the risk of losing events between database state changes and asynchronous message publication.
+
+---
+
+# 💳 Razorpay Payment Flow
+
+The application supports a Razorpay-based payment flow for recovery.
+
+```text
+Failed Payment
+      ↓
+Create Razorpay Order
+      ↓
+Razorpay Checkout
+      ↓
+Payment
+      ↓
+Backend Verification
+      ↓
+Recovered Payment
+```
+
+The backend exposes dedicated endpoints for creating Razorpay orders and verifying completed payments.
+
+---
+
+# 🤖 Recovery Intelligence
+
+The recovery intelligence service analyzes a failed payment together with customer payment history and retry history.
+
+The decision score considers factors such as:
+
+- Failure reason
+- Previous successful payments
+- Previous failed payments
+- Retry count
+- Payment amount
+
+The service produces:
+
+```text
+Payment
+   ↓
+Historical Analysis
+   ↓
+Recovery Score
+   ↓
+Priority
+   ↓
+Recommended Action
+   ↓
+Reason
+```
+
+Example actions include:
+
+```text
+RETRY_NOW
+RETRY_SOON
+SEND_REMINDER
+MANUAL_REVIEW
+```
+
+This keeps the recovery recommendation explainable instead of returning only a raw AI response.
+
+---
+
+# 🚨 Rate Limit Error Handling
+
+Rate-limit failures are returned as a proper HTTP `429 Too Many Requests` response so API clients and the frontend can distinguish throttling from other application errors.
+
+Example response shape:
+
+```json
+{
+  "status": 429,
+  "error": "Too Many Requests",
+  "message": "Rate limit exceeded"
+}
+```
+
+This provides a clean contract for frontend error handling and operational monitoring.
+
+---
+
 # 🛡️ Fraud Safety
 
 Not every failed payment should be automatically recovered.
@@ -1724,11 +1866,9 @@ BLOCK_RECOVERY
 
 # 🔮 Future Improvements
 
-The following are potential future improvements and are not claimed as part of the current implementation:
+Potential future improvements that are not part of the current implementation:
 
 ```text
-Kafka-based event processing
-Outbox Pattern
 Distributed Saga
 Redis-backed distributed idempotency
 Distributed scheduler locking
