@@ -1121,7 +1121,7 @@ The project separates HTTP handling, business logic, persistence, domain models,
 
 ---
 
-# 🌐 API Endpoints
+#  API Endpoints
 
 ## Payment APIs
 
@@ -1189,7 +1189,7 @@ GET /api/analytics/revenue?period=30
 
 ---
 
-# 🧪 Testing Strategy
+#  Testing Strategy
 
 The backend can be tested using Postman.
 
@@ -1457,7 +1457,7 @@ Git
 
 ---
 
-# 🗄️ MySQL Setup
+#  MySQL Setup
 
 Create the database:
 
@@ -1534,7 +1534,7 @@ http://localhost:8080
 
 ---
 
-# 📦 Build Backend
+#  Build Backend
 
 ### Windows
 
@@ -1550,7 +1550,7 @@ http://localhost:8080
 
 ---
 
-# ▶️ Run Frontend
+#  Run Frontend
 
 From the frontend directory:
 
@@ -1598,7 +1598,7 @@ Spring Boot
 
 ---
 
-# 🚀 Production Deployment
+# Production Deployment
 
 Deployment flow:
 
@@ -1690,7 +1690,7 @@ The project follows backend engineering principles including:
 
 ---
 
-# 🎓 Engineering Concepts Demonstrated
+#  Engineering Concepts Demonstrated
 
 ```text
 Java
@@ -1736,7 +1736,7 @@ Cloud Deployment
 
 ---
 
-# 🧩 Why Saga Instead of One Large Transaction?
+#  Why Saga Instead of One Large Transaction?
 
 A payment recovery workflow may involve multiple operations and external systems.
 
@@ -1784,7 +1784,7 @@ This is one of the main reasons Saga orchestration is useful in the project.
 
 ---
 
-# 🔥 Important Production Scenarios
+#  Important Production Scenarios
 
 ## Scenario 1 — Client Retry
 
@@ -1864,7 +1864,7 @@ BLOCK_RECOVERY
 
 ---
 
-# 🔮 Future Improvements
+#  Future Improvements
 
 Potential future improvements that are not part of the current implementation:
 
@@ -1892,7 +1892,7 @@ Multi-Tenant Architecture
 
 ---
 
-# 📌 Current Architecture Philosophy
+# Current Architecture Philosophy
 
 The project is built around one central idea:
 
@@ -1945,7 +1945,7 @@ Safe AI Integration
 
 ---
 
-# 👨‍💻 Author
+#  Author
 
 ## Vishal Singh
 
@@ -1963,6 +1963,6 @@ Backend-focused Java engineer with interest in:
 
 ---
 
-# 📄 License
+# License
 
 This project is developed as a production-oriented engineering and portfolio project for learning, experimentation, system design practice, and demonstrating backend engineering capabilities.
