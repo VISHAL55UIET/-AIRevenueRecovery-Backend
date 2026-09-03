@@ -35,8 +35,7 @@ public class OutboxEventPublisher {
             @Value("${outbox.publisher.enabled:true}") boolean enabled,
             @Value("${outbox.publisher.batch-size:100}") int batchSize,
             @Value("${outbox.publisher.max-retries:5}") int maxRetries,
-            @Value("${outbox.publisher.stale-minutes:10}") int staleMinutes
-    ) {
+            @Value("${outbox.publisher.stale-minutes:10}") int staleMinutes) {
         this.outboxEventRepository = outboxEventRepository;
         this.kafkaEventPublisher = kafkaEventPublisher;
         this.enabled = enabled;
@@ -51,11 +50,9 @@ public class OutboxEventPublisher {
     )
     @Transactional
     public void scheduledPublish() {
-
         if (!enabled) {
             return;
         }
-
         publishPendingEvents();
     }
 
@@ -63,185 +60,79 @@ public class OutboxEventPublisher {
     public int publishPendingEvents() {
 
         releaseStaleEvents();
-
-        List<OutboxEvent> events =
-                outboxEventRepository
-                        .findTop100ByStatusOrderByCreatedAtAsc(
-                                PENDING
-                        );
-
+        List<OutboxEvent> events = outboxEventRepository.findTop100ByStatusOrderByCreatedAtAsc(PENDING);
         int publishedCount = 0;
-
-        int limit = Math.min(
-                events.size(),
-                batchSize
-        );
-
+        int limit = Math.min(events.size(), batchSize);
         for (int i = 0; i < limit; i++) {
-
             OutboxEvent event = events.get(i);
-
             try {
-
                 markProcessing(event);
-
                 publishToKafka(event);
-
                 markPublished(event);
-
                 publishedCount++;
-
             } catch (Exception exception) {
-
-                handleFailure(
-                        event,
-                        exception
-                );
+                handleFailure(event, exception);
             }
         }
-
         return publishedCount;
     }
-
-    private void markProcessing(
-            OutboxEvent event
-    ) {
-
+    private void markProcessing(OutboxEvent event) {
         event.setStatus(PROCESSING);
-
-        event.setProcessingStartedAt(
-                LocalDateTime.now()
-        );
-
-        event.setLockedBy(
-                PUBLISHER_ID
-        );
-
+        event.setProcessingStartedAt(LocalDateTime.now());
+        event.setLockedBy(PUBLISHER_ID);
         outboxEventRepository.save(event);
     }
-
     private void publishToKafka(
             OutboxEvent event
     ) throws Exception {
-
         if (event == null) {
-
-            throw new IllegalArgumentException(
-                    "Outbox event cannot be null"
-            );
+            throw new IllegalArgumentException("Outbox event cannot be null");
         }
 
-        if (event.getEventId() == null
-                || event.getEventId().isBlank()) {
-
+        if (event.getEventId() == null || event.getEventId().isBlank()) {
             throw new IllegalStateException(
                     "Outbox event ID is empty"
             );
         }
-
-        if (event.getPayload() == null
-                || event.getPayload().isBlank()) {
-
-            throw new IllegalStateException(
-                    "Outbox event payload is empty: "
-                            + event.getEventId()
-            );
+        if (event.getPayload() == null || event.getPayload().isBlank()) {
+            throw new IllegalStateException("Outbox event payload is empty: " + event.getEventId());
         }
-
-        kafkaEventPublisher
-                .publish(event)
-                .get(
-                        10,
-                        TimeUnit.SECONDS
-                );
+        kafkaEventPublisher.publish(event).get(10, TimeUnit.SECONDS);
     }
-
-    private void markPublished(
-            OutboxEvent event
-    ) {
-
+    private void markPublished(OutboxEvent event) {
         event.setStatus(PUBLISHED);
-
-        event.setPublishedAt(
-                LocalDateTime.now()
-        );
-
+        event.setPublishedAt(LocalDateTime.now());
         event.setLastError(null);
-
         event.setLockedBy(null);
-
         event.setProcessingStartedAt(null);
-
         outboxEventRepository.save(event);
     }
-
     private void releaseStaleEvents() {
-
-        LocalDateTime cutoff =
-                LocalDateTime.now()
-                        .minusMinutes(staleMinutes);
-
-        List<OutboxEvent> staleEvents =
-                outboxEventRepository
-                        .findByStatusAndProcessingStartedAtBefore(
-                                PROCESSING,
-                                cutoff
-                        );
-
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(staleMinutes);
+        List<OutboxEvent> staleEvents = outboxEventRepository.findByStatusAndProcessingStartedAtBefore(PROCESSING, cutoff);
         for (OutboxEvent event : staleEvents) {
-
             event.setStatus(PENDING);
-
             event.setLockedBy(null);
-
             event.setProcessingStartedAt(null);
-
             outboxEventRepository.save(event);
         }
     }
-
-    private void handleFailure(
-            OutboxEvent event,
-            Exception exception
-    ) {
-
-        int retryCount =
-                event.getRetryCount() == null
-                        ? 0
-                        : event.getRetryCount();
-
+    private void handleFailure(OutboxEvent event, Exception exception) {
+        int retryCount = event.getRetryCount() == null ? 0 : event.getRetryCount();
         retryCount++;
-
         event.setRetryCount(retryCount);
-
-        String errorMessage =
-                exception.getMessage();
-
-        if (errorMessage == null
-                || errorMessage.isBlank()) {
-
-            errorMessage =
-                    exception.getClass()
-                            .getSimpleName();
+        String errorMessage = exception.getMessage();
+        if (errorMessage == null || errorMessage.isBlank()) {
+            errorMessage = exception.getClass().getSimpleName();
         }
-
-        event.setLastError(
-                errorMessage
-        );
-
+        event.setLastError(errorMessage);
         event.setLockedBy(null);
-
         event.setProcessingStartedAt(null);
-
         if (retryCount >= maxRetries) {
-
             event.setStatus(FAILED);
-
         } else {
-
             event.setStatus(PENDING);
         }
-
         outboxEventRepository.save(event);
     }
 }

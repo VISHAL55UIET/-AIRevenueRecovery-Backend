@@ -2,12 +2,9 @@ package com.AIRevenueRecovery.service;
 
 import com.AIRevenueRecovery.entity.FailureReason;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
-
 @Service
 public class RetrySchedulingService {
-
     public LocalDateTime calculateNextRetry(FailureReason failureReason, int attemptNumber) {
         if (failureReason == null) {
             return null;
@@ -28,7 +25,6 @@ public class RetrySchedulingService {
                 return null;
             case UNKNOWN:
                 return now.plusHours(6);
-
             default:
                 return null;
         }

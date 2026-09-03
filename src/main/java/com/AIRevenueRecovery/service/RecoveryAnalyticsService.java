@@ -19,10 +19,8 @@ import java.util.Set;
 
 @Service
 public class RecoveryAnalyticsService {
-
     private final RecoveryAttemptRepository recoveryAttemptRepository;
     private final PaymentRepository paymentRepository;
-
     public RecoveryAnalyticsService(
             RecoveryAttemptRepository recoveryAttemptRepository,
             PaymentRepository paymentRepository) {

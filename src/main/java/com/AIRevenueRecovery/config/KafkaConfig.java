@@ -15,55 +15,37 @@ import java.util.Map;
 
 @Configuration
 public class KafkaConfig {
-
     public static final String RECOVERY_EVENTS_TOPIC =
             "recovery-events";
 
     @Bean
     public ProducerFactory<String, String> producerFactory() {
+        Map<String, Object> config = new HashMap<>();
 
-        Map<String, Object> config =
-                new HashMap<>();
-
-        config.put(
-                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                "localhost:29092"
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:29092"
         );
-        config.put(
-                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
                 StringSerializer.class
         );
-
-        config.put(
-                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
                 StringSerializer.class
         );
-
-        config.put(
-                ProducerConfig.ACKS_CONFIG,
+        config.put(ProducerConfig.ACKS_CONFIG,
                 "all"
         );
-
         config.put(
                 ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG,
                 true
         );
-
-        config.put(
-                ProducerConfig.RETRIES_CONFIG,
+        config.put(ProducerConfig.RETRIES_CONFIG,
                 3
         );
-
         return new DefaultKafkaProducerFactory<>(config);
     }
 
     @Bean
-    public KafkaTemplate<String, String> kafkaTemplate(
-            ProducerFactory<String, String> producerFactory
-    ) {
-        return new KafkaTemplate<>(
-                producerFactory
-        );
+    public KafkaTemplate<String, String> kafkaTemplate(ProducerFactory<String, String> producerFactory) {
+        return new KafkaTemplate<>(producerFactory);
     }
 
     @Bean

@@ -24,7 +24,7 @@ public class RecoveryMetricsService {
         long totalRecoveryAttempts = recoveryAttemptRepository.count();
         double recoveryRate = 0.0;
         if (totalPayments > 0) {
-            recoveryRate = ((double) successfulPayments / totalPayments) * 100.0;
+             recoveryRate = ((double) successfulPayments / totalPayments) * 100.0;
         }
         return new RecoveryMetricsResponse(
                 totalPayments, successfulPayments, failedPayments,

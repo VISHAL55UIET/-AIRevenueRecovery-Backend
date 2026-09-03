@@ -12,17 +12,11 @@ import java.util.Map;
 public class PaymentAnalyticsController {
 
     private final PaymentAnalyticsService paymentAnalyticsService;
-
-    public PaymentAnalyticsController(
-            PaymentAnalyticsService paymentAnalyticsService) {
-
-        this.paymentAnalyticsService =
-                paymentAnalyticsService;
+    public PaymentAnalyticsController(PaymentAnalyticsService paymentAnalyticsService) {
+        this.paymentAnalyticsService = paymentAnalyticsService;
     }
-
     @GetMapping
     public Map<String, Object> getPaymentAnalytics() {
-
         return paymentAnalyticsService
                 .getPaymentAnalytics();
     }

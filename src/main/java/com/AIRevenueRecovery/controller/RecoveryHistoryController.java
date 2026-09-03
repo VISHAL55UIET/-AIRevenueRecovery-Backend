@@ -15,7 +15,6 @@ public class RecoveryHistoryController {
 
         this.recoveryHistoryService = recoveryHistoryService;
     }
-
     @GetMapping("/{paymentId}")
     public RecoveryHistoryResponse getRecoveryHistory(
             @PathVariable Long paymentId) {

@@ -16,62 +16,37 @@ public class CustomerRecoveryService {
     private final CustomerRepository customerRepository;
     private final PaymentRepository paymentRepository;
 
-    public CustomerRecoveryService(
-            CustomerRepository customerRepository,
+    public CustomerRecoveryService(CustomerRepository customerRepository,
             PaymentRepository paymentRepository) {
-
         this.customerRepository = customerRepository;
         this.paymentRepository = paymentRepository;
     }
-
     public CustomerRecoverySummary getSummary(String customerId) {
-
         customerRepository.findByCustomerId(customerId)
-                .orElseThrow(() ->
-                        new CustomerNotFoundException(
-                                "Customer not found: " + customerId
-                        ));
-
+                .orElseThrow(() -> new CustomerNotFoundException("Customer not found: " + customerId));
         List<Payment> payments = paymentRepository.findAll()
                 .stream()
-                .filter(payment ->
-                        customerId.equals(payment.getCustomerId()))
-                .toList();
-
+                .filter(payment -> customerId.equals(payment.getCustomerId())).toList();
         long totalPayments = payments.size();
-
         long successfulPayments = payments.stream()
-                .filter(payment ->
-                        payment.getStatus() == PaymentStatus.SUCCESS)
-                .count();
-
+                .filter(payment -> payment.getStatus() == PaymentStatus.SUCCESS).count();
         long failedPayments = payments.stream()
-                .filter(payment ->
-                        payment.getStatus() == PaymentStatus.FAILED)
+                .filter(payment -> payment.getStatus() == PaymentStatus.FAILED)
                 .count();
-
         double totalAmount = payments.stream()
                 .mapToDouble(Payment::getAmount)
                 .sum();
-
         double recoveredAmount = payments.stream()
                 .filter(payment ->
                         payment.getStatus() == PaymentStatus.SUCCESS)
                 .mapToDouble(Payment::getAmount)
                 .sum();
-
         double recoveryRate = totalPayments == 0
                 ? 0.0
                 : (successfulPayments * 100.0) / totalPayments;
-
         return new CustomerRecoverySummary(
-                customerId,
-                totalPayments,
-                successfulPayments,
-                failedPayments,
-                totalAmount,
-                recoveredAmount,
-                recoveryRate
+                customerId, totalPayments, successfulPayments,
+                failedPayments, totalAmount, recoveredAmount, recoveryRate
         );
     }
 }

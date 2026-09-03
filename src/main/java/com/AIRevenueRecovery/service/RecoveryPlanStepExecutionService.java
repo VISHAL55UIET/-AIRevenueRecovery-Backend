@@ -15,8 +15,10 @@ import java.time.LocalDateTime;
 
 @Service
 public class RecoveryPlanStepExecutionService {
+
     private static final int MAX_RETRIES = 3;
     private static final int MAX_RECOVERY_STEPS = 3;
+
     private final RecoveryPlanStepRepository recoveryPlanStepRepository;
     private final PaymentRepository paymentRepository;
     private final PaymentGatewayService paymentGatewayService;
@@ -24,6 +26,7 @@ public class RecoveryPlanStepExecutionService {
     private final RecoveryAttemptRepository recoveryAttemptRepository;
     private final RecoveryEventService recoveryEventService;
     private final AIRecoveryDecisionService aiRecoveryDecisionService;
+
     public RecoveryPlanStepExecutionService(
             RecoveryPlanStepRepository recoveryPlanStepRepository,
             PaymentRepository paymentRepository,
@@ -42,10 +45,6 @@ public class RecoveryPlanStepExecutionService {
         this.aiRecoveryDecisionService = aiRecoveryDecisionService;
     }
 
-    // ============================================================
-    // EXECUTE RECOVERY STEP
-    // ============================================================
-
     @Transactional
     public RecoveryPlanStep executeStep(Long stepId) {
 
@@ -53,18 +52,15 @@ public class RecoveryPlanStepExecutionService {
                 recoveryPlanStepRepository.findById(stepId)
                         .orElseThrow(() ->
                                 new RuntimeException(
-                                        "Recovery plan step not found with ID: "
-                                                + stepId
+                                        "Recovery plan step not found with ID: " + stepId
                                 )
                         );
 
-        String currentStatus = normalizeStatus(
-                step.getStatus()
-        );
+        String currentStatus = normalizeStatus(step.getStatus());
 
         if ("COMPLETED".equals(currentStatus)
-                || "BLOCKED".equals(currentStatus)) {
-
+                || "BLOCKED".equals(currentStatus)
+                || "WAITING_FOR_PAYMENT".equals(currentStatus)) {
             return step;
         }
 
@@ -78,32 +74,37 @@ public class RecoveryPlanStepExecutionService {
             );
         }
 
-        RecoveryPlan recoveryPlan =
-                step.getRecoveryPlan();
+        RecoveryPlan recoveryPlan = step.getRecoveryPlan();
 
         if (recoveryPlan == null) {
             throw new RuntimeException(
-                    "Recovery plan not found for step: "
-                            + stepId
+                    "Recovery plan not found for step: " + stepId
             );
         }
 
-        Payment payment =
-                recoveryPlan.getPayment();
+        Payment payment = recoveryPlan.getPayment();
 
         if (payment == null) {
             throw new RuntimeException(
-                    "Payment not found for recovery plan step: "
-                            + stepId
+                    "Payment not found for recovery plan step: " + stepId
             );
         }
 
-        /*
-         * Mark the step as processing before executing
-         * the actual recovery action.
-         */
+        if (payment.getStatus() == PaymentStatus.RECOVERED) {
+
+            finalizeSuccessfulRecovery(
+                    recoveryPlan,
+                    payment,
+                    step
+            );
+
+            return step;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
         step.setStatus("PROCESSING");
-        step.setUpdatedAt(LocalDateTime.now());
+        step.setUpdatedAt(now);
 
         recoveryPlanStepRepository.save(step);
 
@@ -171,34 +172,26 @@ public class RecoveryPlanStepExecutionService {
 
                     step.setStatus("FAILED");
                     step.setResult("UNKNOWN_ACTION");
-
-                    recordEvent(
-                            payment,
-                            recoveryPlan,
-                            "RECOVERY_STEP_FAILED",
-                            action,
-                            "FAILED",
-                            "Unknown recovery action: " + action
-                    );
                 }
             }
 
-            LocalDateTime now =
-                    LocalDateTime.now();
+            LocalDateTime completedAt = LocalDateTime.now();
 
-            step.setExecutedAt(now);
-            step.setUpdatedAt(now);
-
-            payment.setUpdatedAt(now);
+            step.setUpdatedAt(completedAt);
+            payment.setUpdatedAt(completedAt);
 
             paymentRepository.save(payment);
 
-            RecoveryPlanStep savedStep =
-                    recoveryPlanStepRepository.save(step);
+            RecoveryPlanStep savedStep = recoveryPlanStepRepository.save(step);
 
-            /*
-             * Recovery blocked.
-             */
+
+            if ("WAITING_FOR_PAYMENT".equalsIgnoreCase(
+                    savedStep.getStatus())) {
+
+                return savedStep;
+            }
+
+
             if ("BLOCKED".equalsIgnoreCase(
                     savedStep.getStatus())) {
 
@@ -208,11 +201,10 @@ public class RecoveryPlanStepExecutionService {
                         savedStep
                 );
 
-                /*
-                 * Payment recovered.
-                 */
-            } else if (payment.getStatus()
-                    == PaymentStatus.RECOVERED) {
+                return savedStep;
+            }
+
+            if (payment.getStatus() == PaymentStatus.RECOVERED) {
 
                 finalizeSuccessfulRecovery(
                         recoveryPlan,
@@ -220,10 +212,12 @@ public class RecoveryPlanStepExecutionService {
                         savedStep
                 );
 
-                /*
-                 * Step completed but payment is still failed.
-                 */
-            } else if (shouldContinueRecovery(
+                return savedStep;
+            }
+
+
+
+            if (shouldContinueRecovery(
                     recoveryPlan,
                     savedStep
             )) {
@@ -233,9 +227,6 @@ public class RecoveryPlanStepExecutionService {
                         savedStep
                 );
 
-                /*
-                 * No more recovery attempts.
-                 */
             } else {
 
                 finalizeRecoveryPlan(
@@ -249,8 +240,7 @@ public class RecoveryPlanStepExecutionService {
 
         } catch (Exception exception) {
 
-            LocalDateTime now =
-                    LocalDateTime.now();
+            LocalDateTime failedAt = LocalDateTime.now();
 
             step.setStatus("FAILED");
 
@@ -260,10 +250,11 @@ public class RecoveryPlanStepExecutionService {
                             : "Recovery step execution failed"
             );
 
-            step.setExecutedAt(now);
-            step.setUpdatedAt(now);
+            step.setExecutedAt(failedAt);
+            step.setUpdatedAt(failedAt);
 
-            payment.setUpdatedAt(now);
+            payment.setUpdatedAt(failedAt);
+
             paymentRepository.save(payment);
 
             recordEvent(
@@ -281,10 +272,6 @@ public class RecoveryPlanStepExecutionService {
         }
     }
 
-    // ============================================================
-    // AUTOMATIC RETRY
-    // ============================================================
-
     private void executeAutomaticRetry(
             Payment payment,
             RecoveryPlan recoveryPlan,
@@ -293,35 +280,58 @@ public class RecoveryPlanStepExecutionService {
         validateRetryAllowed(payment);
 
         int attemptNumber =
-                payment.getRetryCount() == null ? 1 : payment.getRetryCount() + 1;
+                payment.getRetryCount() == null
+                        ? 1
+                        : payment.getRetryCount() + 1;
+
         RecoveryAttempt attempt =
-                recoveryAttemptRepository.findByPaymentIdAndAttemptNumber(payment.getId(), attemptNumber
+                recoveryAttemptRepository
+                        .findByPaymentIdAndAttemptNumber(
+                                payment.getId(),
+                                attemptNumber
                         )
                         .orElseGet(() -> {
-                            RecoveryAttempt newAttempt = new RecoveryAttempt();
+
+                            RecoveryAttempt newAttempt =
+                                    new RecoveryAttempt();
+
                             newAttempt.setPayment(payment);
-                            newAttempt.setFailureReason(payment.getFailureReason());
-                            newAttempt.setAttemptNumber(attemptNumber);
-                            newAttempt.setAction("AUTOMATIC_RETRY");
-                            newAttempt.setAiRecommendation(step.getAiRecommendation());
-                            newAttempt.setAiConfidence(step.getAiConfidence());
-                            newAttempt.setAttemptedAt(LocalDateTime.now());
+                            newAttempt.setFailureReason(
+                                    payment.getFailureReason()
+                            );
+                            newAttempt.setAttemptNumber(
+                                    attemptNumber
+                            );
+                            newAttempt.setAction(
+                                    "AUTOMATIC_RETRY"
+                            );
+                            newAttempt.setAiRecommendation(
+                                    step.getAiRecommendation()
+                            );
+                            newAttempt.setAiConfidence(
+                                    step.getAiConfidence()
+                            );
+                            newAttempt.setAttemptedAt(
+                                    LocalDateTime.now()
+                            );
+
                             return newAttempt;
                         });
-        payment.setRetryCount(attemptNumber
-        );
-        payment.setStatus(PaymentStatus.RETRYING
-        );
-        recoveryAttemptRepository.save(attempt
-        );
-        recordEvent(payment, recoveryPlan,
+
+        payment.setRetryCount(attemptNumber);
+        payment.setStatus(PaymentStatus.RETRYING);
+
+        recoveryAttemptRepository.save(attempt);
+
+        recordEvent(
+                payment,
+                recoveryPlan,
                 "PAYMENT_RECOVERY_ATTEMPT",
                 "AUTOMATIC_RETRY",
                 "STARTED",
-                "Automatic payment retry started. Attempt "
+                "Recovery payment flow initiated. Attempt "
                         + attemptNumber
         );
-
         boolean successful =
                 paymentGatewayService.processPayment(
                         payment,
@@ -329,26 +339,16 @@ public class RecoveryPlanStepExecutionService {
                 );
 
         if (successful) {
-
-            attempt.setResult(
-                    "SUCCESS"
-            );
+            attempt.setResult("SUCCESS");
 
             payment.setStatus(
                     PaymentStatus.RECOVERED
             );
 
-            step.setStatus(
-                    "COMPLETED"
-            );
+            step.setStatus("COMPLETED");
+            step.setResult("SUCCESS");
 
-            step.setResult(
-                    "SUCCESS"
-            );
-
-            recoveryAttemptRepository.save(
-                    attempt
-            );
+            recoveryAttemptRepository.save(attempt);
 
             recordEvent(
                     payment,
@@ -356,12 +356,10 @@ public class RecoveryPlanStepExecutionService {
                     "PAYMENT_RECOVERED",
                     "AUTOMATIC_RETRY",
                     "SUCCESS",
-                    "Payment successfully recovered through automatic retry."
+                    "Payment successfully recovered."
             );
 
-            emailService.sendRecoverySuccessEmail(
-                    payment
-            );
+            emailService.sendRecoverySuccessEmail(payment);
 
             recordEvent(
                     payment,
@@ -374,41 +372,32 @@ public class RecoveryPlanStepExecutionService {
 
         } else {
 
-            attempt.setResult(
-                    "FAILED"
-            );
+            /*
+             * Order creation may have succeeded while the
+             * customer has not completed Checkout yet.
+             *
+             * Therefore DO NOT mark the attempt as FAILED.
+             */
+            attempt.setResult("PENDING_CHECKOUT");
 
-            payment.setStatus(
-                    PaymentStatus.FAILED
-            );
-
-            step.setStatus(
-                    "FAILED"
-            );
+            step.setStatus("WAITING_FOR_PAYMENT");
 
             step.setResult(
-                    "FAILED"
+                    "RAZORPAY_CHECKOUT_REQUIRED"
             );
 
-            recoveryAttemptRepository.save(
-                    attempt
-            );
+            recoveryAttemptRepository.save(attempt);
 
             recordEvent(
                     payment,
                     recoveryPlan,
-                    "PAYMENT_RECOVERY_ATTEMPT",
+                    "PAYMENT_CHECKOUT_REQUIRED",
                     "AUTOMATIC_RETRY",
-                    "FAILED",
-                    "Automatic payment retry failed. Attempt "
-                            + attemptNumber
+                    "PENDING",
+                    "Razorpay order created. Customer payment is required."
             );
         }
     }
-
-    // ============================================================
-    // PAYMENT REMINDER
-    // ============================================================
 
     private void executePaymentReminder(
             Payment payment,
@@ -417,13 +406,8 @@ public class RecoveryPlanStepExecutionService {
 
         if (payment.isReminderSent()) {
 
-            step.setStatus(
-                    "COMPLETED"
-            );
-
-            step.setResult(
-                    "REMINDER_ALREADY_SENT"
-            );
+            step.setStatus("COMPLETED");
+            step.setResult("REMINDER_ALREADY_SENT");
 
             recordEvent(
                     payment,
@@ -442,21 +426,11 @@ public class RecoveryPlanStepExecutionService {
                 step.getAiRecommendation()
         );
 
-        payment.setReminderSent(
-                true
-        );
+        payment.setReminderSent(true);
+        payment.setReminderSentAt(LocalDateTime.now());
 
-        payment.setReminderSentAt(
-                LocalDateTime.now()
-        );
-
-        step.setStatus(
-                "COMPLETED"
-        );
-
-        step.setResult(
-                "EMAIL_SENT"
-        );
+        step.setStatus("COMPLETED");
+        step.setResult("EMAIL_SENT");
 
         recordEvent(
                 payment,
@@ -468,9 +442,6 @@ public class RecoveryPlanStepExecutionService {
         );
     }
 
-    // ============================================================
-    // ALTERNATE PAYMENT
-    // ============================================================
 
     private void executeAlternatePayment(
             Payment payment,
@@ -482,13 +453,8 @@ public class RecoveryPlanStepExecutionService {
                 step.getAiRecommendation()
         );
 
-        step.setStatus(
-                "COMPLETED"
-        );
-
-        step.setResult(
-                "ALTERNATE_PAYMENT_REQUESTED"
-        );
+        step.setStatus("COMPLETED");
+        step.setResult("ALTERNATE_PAYMENT_REQUESTED");
 
         recordEvent(
                 payment,
@@ -509,17 +475,10 @@ public class RecoveryPlanStepExecutionService {
             RecoveryPlan recoveryPlan,
             RecoveryPlanStep step) {
 
-        payment.setStatus(
-                PaymentStatus.FAILED
-        );
+        payment.setStatus(PaymentStatus.FAILED);
 
-        step.setStatus(
-                "BLOCKED"
-        );
-
-        step.setResult(
-                "RECOVERY_BLOCKED"
-        );
+        step.setStatus("BLOCKED");
+        step.setResult("RECOVERY_BLOCKED");
 
         recordEvent(
                 payment,
@@ -533,9 +492,6 @@ public class RecoveryPlanStepExecutionService {
         );
     }
 
-    // ============================================================
-    // RETRY VALIDATION
-    // ============================================================
 
     private void validateRetryAllowed(
             Payment payment) {
@@ -578,9 +534,6 @@ public class RecoveryPlanStepExecutionService {
         }
     }
 
-    // ============================================================
-    // CREATE NEXT STEP
-    // ============================================================
 
     private void createNextStep(
             RecoveryPlan recoveryPlan,
@@ -594,7 +547,15 @@ public class RecoveryPlanStepExecutionService {
         int nextStepNumber =
                 completedStep.getStepNumber() + 1;
 
-        if (nextStepNumber > MAX_RECOVERY_STEPS) {
+        int maxSteps =
+                recoveryPlan.getMaxSteps() != null
+                        ? Math.min(
+                        recoveryPlan.getMaxSteps(),
+                        MAX_RECOVERY_STEPS
+                )
+                        : MAX_RECOVERY_STEPS;
+
+        if (nextStepNumber > maxSteps) {
 
             finalizeRecoveryPlan(
                     recoveryPlan,
@@ -605,9 +566,6 @@ public class RecoveryPlanStepExecutionService {
             return;
         }
 
-        /*
-         * Prevent duplicate next step.
-         */
         if (recoveryPlanStepRepository
                 .findByRecoveryPlanIdAndStepNumber(
                         recoveryPlan.getId(),
@@ -637,14 +595,8 @@ public class RecoveryPlanStepExecutionService {
             return;
         }
 
-        /*
-         * AI gets a fresh view of the payment
-         * before choosing the next action.
-         */
         AIRecoveryDecisionService.RecoveryDecision decision =
-                aiRecoveryDecisionService.decide(
-                        payment
-                );
+                aiRecoveryDecisionService.decide(payment);
 
         String nextAction =
                 applyRecoveryGuardrails(
@@ -663,29 +615,12 @@ public class RecoveryPlanStepExecutionService {
         RecoveryPlanStep nextStep =
                 new RecoveryPlanStep();
 
-        nextStep.setRecoveryPlan(
-                recoveryPlan
-        );
-
-        nextStep.setStepNumber(
-                nextStepNumber
-        );
-
-        nextStep.setAction(
-                nextAction
-        );
-
-        nextStep.setScheduledAt(
-                scheduledAt
-        );
-
-        nextStep.setStatus(
-                "SCHEDULED"
-        );
-
-        nextStep.setResult(
-                "PENDING"
-        );
+        nextStep.setRecoveryPlan(recoveryPlan);
+        nextStep.setStepNumber(nextStepNumber);
+        nextStep.setAction(nextAction);
+        nextStep.setScheduledAt(scheduledAt);
+        nextStep.setStatus("SCHEDULED");
+        nextStep.setResult("PENDING");
 
         nextStep.setAiRecommendation(
                 decision != null
@@ -699,37 +634,16 @@ public class RecoveryPlanStepExecutionService {
                         : null
         );
 
-        nextStep.setCreatedAt(
-                now
-        );
+        nextStep.setCreatedAt(now);
+        nextStep.setUpdatedAt(now);
 
-        nextStep.setUpdatedAt(
-                now
-        );
+        recoveryPlanStepRepository.save(nextStep);
 
-        recoveryPlanStepRepository.save(
-                nextStep
-        );
-
-        recoveryPlan.setCurrentStep(
-                nextStepNumber
-        );
-
-        recoveryPlan.setNextAction(
-                nextAction
-        );
-
-        recoveryPlan.setNextActionAt(
-                scheduledAt
-        );
-
-        recoveryPlan.setStatus(
-                "ACTIVE"
-        );
-
-        recoveryPlan.setUpdatedAt(
-                now
-        );
+        recoveryPlan.setCurrentStep(nextStepNumber);
+        recoveryPlan.setNextAction(nextAction);
+        recoveryPlan.setNextActionAt(scheduledAt);
+        recoveryPlan.setStatus("ACTIVE");
+        recoveryPlan.setUpdatedAt(now);
 
         recordEvent(
                 payment,
@@ -751,14 +665,10 @@ public class RecoveryPlanStepExecutionService {
                 "RECOVERY_STEP_SCHEDULED",
                 nextAction,
                 "SCHEDULED",
-                "Next AI-driven recovery step scheduled for "
+                "Next recovery step scheduled for "
                         + scheduledAt
         );
     }
-
-    // ============================================================
-    // AI GUARDRAILS
-    // ============================================================
 
     private String applyRecoveryGuardrails(
             Payment payment,
@@ -776,9 +686,9 @@ public class RecoveryPlanStepExecutionService {
         }
 
         String action =
-                decision.action()
-                        .trim()
-                        .toUpperCase();
+                normalizeAction(
+                        decision.action()
+                );
 
         if (payment.getFailureReason() != null) {
 
@@ -787,27 +697,18 @@ public class RecoveryPlanStepExecutionService {
                             .name()
                             .toUpperCase();
 
-            /*
-             * Fraud/security = never recover automatically.
-             */
             if (reason.contains("FRAUD")
                     || reason.contains("SECURITY")) {
 
                 return "BLOCK_RECOVERY";
             }
 
-            /*
-             * Expired/unusable card.
-             */
             if (reason.contains("EXPIRED")
                     || reason.contains("INVALID_CARD")) {
 
                 return "REQUEST_ALTERNATE_PAYMENT";
             }
 
-            /*
-             * Insufficient funds = reminder.
-             */
             if (reason.contains("INSUFFICIENT")) {
 
                 return "SEND_PAYMENT_REMINDER";
@@ -844,9 +745,6 @@ public class RecoveryPlanStepExecutionService {
         };
     }
 
-    // ============================================================
-    // CONTINUE CHECK
-    // ============================================================
 
     private boolean shouldContinueRecovery(
             RecoveryPlan recoveryPlan,
@@ -854,24 +752,28 @@ public class RecoveryPlanStepExecutionService {
 
         if (recoveryPlan == null
                 || step == null) {
-
             return false;
         }
 
-        if (step.getStepNumber() >=
-                Math.min(
-                        MAX_RECOVERY_STEPS,
-                        recoveryPlan.getMaxSteps() != null
-                                ? recoveryPlan.getMaxSteps()
-                                : MAX_RECOVERY_STEPS
-                )) {
+        if ("WAITING_FOR_PAYMENT".equalsIgnoreCase(
+                step.getStatus())) {
+            return false;
+        }
 
+        int maxSteps =
+                recoveryPlan.getMaxSteps() != null
+                        ? Math.min(
+                        recoveryPlan.getMaxSteps(),
+                        MAX_RECOVERY_STEPS
+                )
+                        : MAX_RECOVERY_STEPS;
+
+        if (step.getStepNumber() >= maxSteps) {
             return false;
         }
 
         if ("BLOCKED".equalsIgnoreCase(
                 step.getStatus())) {
-
             return false;
         }
 
@@ -881,24 +783,15 @@ public class RecoveryPlanStepExecutionService {
 
         if (recoveryPlan.getPayment().getStatus()
                 == PaymentStatus.RECOVERED) {
-
             return false;
         }
 
-        /*
-         * Only completed/failed recovery steps
-         * can move the plan forward.
-         */
         return "COMPLETED".equalsIgnoreCase(
                 step.getStatus()
         ) || "FAILED".equalsIgnoreCase(
                 step.getStatus()
         );
     }
-
-    // ============================================================
-    // SUCCESSFUL RECOVERY
-    // ============================================================
 
     private void finalizeSuccessfulRecovery(
             RecoveryPlan recoveryPlan,
@@ -912,33 +805,29 @@ public class RecoveryPlanStepExecutionService {
                 PaymentStatus.RECOVERED
         );
 
-        payment.setUpdatedAt(
-                now
-        );
+        payment.setNextRetryAt(null);
+        payment.setUpdatedAt(now);
 
-        paymentRepository.save(
-                payment
-        );
+        paymentRepository.save(payment);
 
-        recoveryPlan.setStatus(
-                "COMPLETED"
-        );
-
+        recoveryPlan.setStatus("COMPLETED");
         recoveryPlan.setCurrentStep(
                 completedStep.getStepNumber()
         );
+        recoveryPlan.setNextAction(null);
+        recoveryPlan.setNextActionAt(null);
+        recoveryPlan.setUpdatedAt(now);
 
-        recoveryPlan.setNextAction(
-                null
-        );
+        completedStep.setStatus("COMPLETED");
 
-        recoveryPlan.setNextActionAt(
-                null
-        );
+        if (completedStep.getResult() == null) {
+            completedStep.setResult("SUCCESS");
+        }
 
-        recoveryPlan.setUpdatedAt(
-                now
-        );
+        completedStep.setExecutedAt(now);
+        completedStep.setUpdatedAt(now);
+
+        recoveryPlanStepRepository.save(completedStep);
 
         recordEvent(
                 payment,
@@ -949,10 +838,6 @@ public class RecoveryPlanStepExecutionService {
                 "Recovery plan completed successfully. Payment was recovered."
         );
     }
-
-    // ============================================================
-    // BLOCKED RECOVERY
-    // ============================================================
 
     private void finalizeBlockedRecovery(
             RecoveryPlan recoveryPlan,
@@ -966,33 +851,17 @@ public class RecoveryPlanStepExecutionService {
                 PaymentStatus.FAILED
         );
 
-        payment.setUpdatedAt(
-                now
-        );
+        payment.setUpdatedAt(now);
 
-        paymentRepository.save(
-                payment
-        );
+        paymentRepository.save(payment);
 
-        recoveryPlan.setStatus(
-                "BLOCKED"
-        );
-
+        recoveryPlan.setStatus("BLOCKED");
         recoveryPlan.setCurrentStep(
                 completedStep.getStepNumber()
         );
-
-        recoveryPlan.setNextAction(
-                null
-        );
-
-        recoveryPlan.setNextActionAt(
-                null
-        );
-
-        recoveryPlan.setUpdatedAt(
-                now
-        );
+        recoveryPlan.setNextAction(null);
+        recoveryPlan.setNextActionAt(null);
+        recoveryPlan.setUpdatedAt(now);
 
         recordEvent(
                 payment,
@@ -1003,10 +872,6 @@ public class RecoveryPlanStepExecutionService {
                 "Recovery plan was blocked by recovery safety rules."
         );
     }
-
-    // ============================================================
-    // EXHAUSTED RECOVERY
-    // ============================================================
 
     private void finalizeRecoveryPlan(
             RecoveryPlan recoveryPlan,
@@ -1032,33 +897,17 @@ public class RecoveryPlanStepExecutionService {
                 PaymentStatus.FAILED
         );
 
-        payment.setUpdatedAt(
-                now
-        );
+        payment.setUpdatedAt(now);
 
-        paymentRepository.save(
-                payment
-        );
+        paymentRepository.save(payment);
 
-        recoveryPlan.setStatus(
-                "EXHAUSTED"
-        );
-
+        recoveryPlan.setStatus("EXHAUSTED");
         recoveryPlan.setCurrentStep(
                 completedStep.getStepNumber()
         );
-
-        recoveryPlan.setNextAction(
-                null
-        );
-
-        recoveryPlan.setNextActionAt(
-                null
-        );
-
-        recoveryPlan.setUpdatedAt(
-                now
-        );
+        recoveryPlan.setNextAction(null);
+        recoveryPlan.setNextActionAt(null);
+        recoveryPlan.setUpdatedAt(now);
 
         recordEvent(
                 payment,
@@ -1114,47 +963,23 @@ public class RecoveryPlanStepExecutionService {
         recoveryEventService.recordEvent(
                 payment,
                 recoveryPlan,
-                eventType,
-                action,
-                status,
-                message,
-                null
-        );
+                eventType, action,
+                status, message, null);
     }
-
-    // ============================================================
-    // NORMALIZE ACTION
-    // ============================================================
-
-    private String normalizeAction(
-            String action) {
-
-        if (action == null
-                || action.isBlank()) {
-
+    private String normalizeAction(String action) {
+        if (action == null || action.isBlank()) {
             return "BLOCK_RECOVERY";
         }
 
-        return action
-                .trim()
-                .toUpperCase();
+        return action.trim().toUpperCase();
     }
-
-    // ============================================================
-    // NORMALIZE STATUS
-    // ============================================================
-
-    private String normalizeStatus(
-            String status) {
-
+    private String normalizeStatus(String status) {
         if (status == null
                 || status.isBlank()) {
 
             return "SCHEDULED";
         }
 
-        return status
-                .trim()
-                .toUpperCase();
+        return status.trim().toUpperCase();
     }
 }

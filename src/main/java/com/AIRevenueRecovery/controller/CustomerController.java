@@ -15,22 +15,18 @@ public class CustomerController {
     public CustomerController(CustomerService customerService) {
         this.customerService = customerService;
     }
-
     @PostMapping
     public Customer createCustomer(@RequestBody Customer customer) {
         return customerService.createCustomer(customer);
     }
-
     @GetMapping("/{id}")
     public Customer getCustomer(@PathVariable Long id) {
         return customerService.getCustomer(id);
     }
-
     @GetMapping("/customer-id/{customerId}")
     public Customer getCustomerByCustomerId(@PathVariable String customerId) {
         return customerService.getCustomerByCustomerId(customerId);
     }
-
     @GetMapping
     public List<Customer> getAllCustomers() {
         return customerService.getAllCustomers();

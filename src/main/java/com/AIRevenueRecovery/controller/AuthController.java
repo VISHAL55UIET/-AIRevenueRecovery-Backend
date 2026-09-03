@@ -23,11 +23,6 @@ public class AuthController {
     ) {
         this.authService = authService;
     }
-
-    // ==============================
-    // SIGNUP
-    // ==============================
-
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> signup(
             @Valid @RequestBody SignupRequest request

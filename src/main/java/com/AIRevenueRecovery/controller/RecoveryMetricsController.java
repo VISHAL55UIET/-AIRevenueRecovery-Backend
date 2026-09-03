@@ -11,14 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class RecoveryMetricsController {
 
     private final RecoveryMetricsService recoveryMetricsService;
+    public RecoveryMetricsController(RecoveryMetricsService recoveryMetricsService) {
 
-    public RecoveryMetricsController(
-            RecoveryMetricsService recoveryMetricsService) {
-
-        this.recoveryMetricsService =
-                recoveryMetricsService;
+        this.recoveryMetricsService = recoveryMetricsService;
     }
-
     @GetMapping
     public RecoveryMetricsResponse getMetrics() {
 

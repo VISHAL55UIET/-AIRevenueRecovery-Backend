@@ -25,68 +25,35 @@ public class FailureAnalyticsService {
         this.recoveryAttemptRepository =
                 recoveryAttemptRepository;
     }
-
     public Map<String, Object> getFailureAnalytics() {
-
-        List<Payment> payments =
-                paymentRepository.findAll();
-
-        List<RecoveryAttempt> attempts =
-                recoveryAttemptRepository.findAll();
-
-        Map<String, Map<String, Object>> failureStats =
-                new LinkedHashMap<>();
-
-        /*
-         * Analyze failed payments
-         */
+        List<Payment> payments = paymentRepository.findAll();
+        List<RecoveryAttempt> attempts = recoveryAttemptRepository.findAll();
+        Map<String, Map<String, Object>> failureStats = new LinkedHashMap<>();
         for (Payment payment : payments) {
-
-            FailureReason failureReason =
-                    payment.getFailureReason();
-
+            FailureReason failureReason = payment.getFailureReason();
             if (failureReason == null) {
                 continue;
             }
-
-            String reason =
-                    failureReason.name();
-
-            Map<String, Object> stats =
-                    failureStats.get(reason);
-
+            String reason = failureReason.name();
+            Map<String, Object> stats = failureStats.get(reason);
             if (stats == null) {
-
                 stats = new LinkedHashMap<>();
-
-                stats.put(
-                        "failedPayments",
+                stats.put("failedPayments",
                         0L
                 );
 
-                stats.put(
-                        "failedAmount",
-                        0.0
+                stats.put("failedAmount", 0.0
                 );
-
-                stats.put(
-                        "recoveryAttempts",
+                stats.put("recoveryAttempts",
                         0L
                 );
-
-                stats.put(
-                        "successfulRecoveries",
+                stats.put("successfulRecoveries",
                         0L
                 );
-
-                stats.put(
-                        "failedRecoveries",
+                stats.put("failedRecoveries",
                         0L
                 );
-
-                failureStats.put(
-                        reason,
-                        stats
+                failureStats.put(reason, stats
                 );
             }
 

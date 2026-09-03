@@ -12,20 +12,11 @@ import java.util.Map;
 @RequestMapping("/api/dashboard")
 public class DashboardController {
     private final DashboardService dashboardService;
-    public DashboardController(
-            DashboardService dashboardService) {
-
+    public DashboardController(DashboardService dashboardService) {
         this.dashboardService = dashboardService;
     }
     @GetMapping("/stats")
-    public Map<String, Object> getDashboardStats(
-            @RequestParam(
-                    defaultValue = "30"
-            ) int period
-    ) {
-
-        return dashboardService.getDashboardStats(
-                period
-        );
+    public Map<String, Object> getDashboardStats(@RequestParam(defaultValue = "30") int period) {
+        return dashboardService.getDashboardStats(period);
     }
 }

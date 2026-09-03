@@ -2,6 +2,8 @@ package com.AIRevenueRecovery.service;
 
 import com.AIRevenueRecovery.entity.RecoveryPlanStep;
 import com.AIRevenueRecovery.repository.RecoveryPlanStepRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,30 +13,134 @@ import java.util.List;
 
 @Service
 public class RecoveryPlanStepSchedulerService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(
+                    RecoveryPlanStepSchedulerService.class
+            );
+    private static final long PROCESSING_TIMEOUT_MINUTES = 10;
+
     private final RecoveryPlanStepRepository recoveryPlanStepRepository;
     private final RecoveryPlanStepExecutionService recoveryPlanStepExecutionService;
+
     public RecoveryPlanStepSchedulerService(
             RecoveryPlanStepRepository recoveryPlanStepRepository,
             RecoveryPlanStepExecutionService recoveryPlanStepExecutionService) {
-        this.recoveryPlanStepRepository = recoveryPlanStepRepository;
-        this.recoveryPlanStepExecutionService = recoveryPlanStepExecutionService;
+
+        this.recoveryPlanStepRepository =
+                recoveryPlanStepRepository;
+
+        this.recoveryPlanStepExecutionService =
+                recoveryPlanStepExecutionService;
     }
+
     @Scheduled(fixedRate = 60000)
-    @Transactional
     public void processScheduledSteps() {
-        List<RecoveryPlanStep> steps = recoveryPlanStepRepository.findByStatusAndScheduledAtLessThanEqual("SCHEDULED",
-                                LocalDateTime.now());
+
+        LocalDateTime now =
+                LocalDateTime.now();
+        recoverStaleProcessingSteps(now);
+        processDueSteps(now);
+    }
+
+    @Transactional
+    protected void recoverStaleProcessingSteps(
+            LocalDateTime now) {
+
+        LocalDateTime threshold =
+                now.minusMinutes(
+                        PROCESSING_TIMEOUT_MINUTES
+                );
+
+        int recovered =
+                recoveryPlanStepRepository
+                        .resetStaleProcessingSteps(
+                                threshold,
+                                now
+                        );
+
+        if (recovered > 0) {
+
+            log.warn(
+                    "Reset stale recovery steps. " +
+                            "count={}, timeoutMinutes={}",
+                    recovered,
+                    PROCESSING_TIMEOUT_MINUTES
+            );
+        }
+    }
+    private void processDueSteps(
+            LocalDateTime now) {
+
+        List<RecoveryPlanStep> steps =
+                recoveryPlanStepRepository
+                        .findByStatusAndScheduledAtLessThanEqual(
+                                "SCHEDULED",
+                                now
+                        );
+
         for (RecoveryPlanStep step : steps) {
+
             try {
-                step.setStatus("PROCESSING");
-                step.setUpdatedAt(LocalDateTime.now());
-                recoveryPlanStepRepository.save(step);
-                recoveryPlanStepExecutionService.executeStep(step.getId());
-                System.out.println("Recovery plan step executed: " + step.getId());
+
+                boolean claimed =
+                        claimStep(
+                                step.getId(),
+                                now
+                        );
+                if (!claimed) {
+
+                    log.debug(
+                            "Recovery step was already claimed. " +
+                                    "stepId={}",
+                            step.getId()
+                    );
+
+                    continue;
+                }
+
+                log.info(
+                        "Recovery step claimed. stepId={}",
+                        step.getId()
+                );
+
+                recoveryPlanStepExecutionService
+                        .executeStep(
+                                step.getId()
+                        );
+
+                log.info(
+                        "Recovery step execution finished. " +
+                                "stepId={}",
+                        step.getId()
+                );
+
             } catch (Exception exception) {
-                System.err.println("Failed to execute recovery plan step " + step.getId() + ": " + exception.getMessage()
+
+                log.error(
+                        "Recovery step execution failed. " +
+                                "stepId={}, reason={}",
+                        step.getId(),
+                        exception.getMessage(),
+                        exception
                 );
             }
         }
+    }
+
+
+    @Transactional
+    protected boolean claimStep(
+            Long stepId,
+            LocalDateTime now) {
+
+        int updatedRows =
+                recoveryPlanStepRepository.claimStep(
+                        stepId,
+                        now,
+                        now
+                );
+
+        return updatedRows == 1;
     }
 }

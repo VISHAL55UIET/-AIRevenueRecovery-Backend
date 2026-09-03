@@ -36,11 +36,7 @@ public class RecoverySchedulerService {
     public void processScheduledRecoveries() {
         LocalDateTime currentTime =
                 LocalDateTime.now();
-        List<Payment> payments =
-                paymentRepository.findPaymentsReadyForRetry(
-                        PaymentStatus.RETRYING,
-                        currentTime
-                );
+        List<Payment> payments = paymentRepository.findPaymentsReadyForRetry(PaymentStatus.RETRYING, currentTime);
         for (Payment payment : payments) {
             try {
                 processPaymentRecovery(payment);

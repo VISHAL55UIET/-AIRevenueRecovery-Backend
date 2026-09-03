@@ -18,16 +18,12 @@ import java.util.Map;
 
 @Service
 public class AnalyticsService {
-
     private final PaymentRepository paymentRepository;
     private final RecoveryAttemptRepository recoveryAttemptRepository;
     private final RecoveryDecisionService recoveryDecisionService;
-
     public AnalyticsService(
-            PaymentRepository paymentRepository,
-            RecoveryAttemptRepository recoveryAttemptRepository,
-            RecoveryDecisionService recoveryDecisionService
-    ) {
+            PaymentRepository paymentRepository, RecoveryAttemptRepository recoveryAttemptRepository,
+            RecoveryDecisionService recoveryDecisionService) {
         this.paymentRepository = paymentRepository;
         this.recoveryAttemptRepository = recoveryAttemptRepository;
         this.recoveryDecisionService = recoveryDecisionService;
@@ -36,106 +32,54 @@ public class AnalyticsService {
     public long getTotalPayments() {
         return paymentRepository.count();
     }
-
     public long getFailedPayments() {
-        return paymentRepository
-                .findByStatus(PaymentStatus.FAILED)
-                .size();
+        return paymentRepository.findByStatus(PaymentStatus.FAILED).size();
     }
-
     public long getRecoveredPayments() {
         return paymentRepository
-                .findByStatus(PaymentStatus.SUCCESS)
-                .size();
+                .findByStatus(PaymentStatus.SUCCESS).size();
     }
 
     public double getRecoveryRate() {
-
-        long totalPayments =
-                paymentRepository.count();
-
+        long totalPayments = paymentRepository.count();
         if (totalPayments == 0) {
             return 0.0;
         }
-
-        long recoveredPayments =
-                getRecoveredPayments();
-
-        return (recoveredPayments * 100.0)
-                / totalPayments;
+        long recoveredPayments = getRecoveredPayments();
+        return (recoveredPayments * 100.0) / totalPayments;
     }
-
     public double getRevenueRecovered() {
 
-        List<Payment> successfulPayments =
-                paymentRepository.findByStatus(
-                        PaymentStatus.SUCCESS
-                );
-
+        List<Payment> successfulPayments = paymentRepository.findByStatus(PaymentStatus.SUCCESS);
         double total = 0.0;
-
         for (Payment payment : successfulPayments) {
-
             if (payment.getAmount() != null) {
                 total += payment.getAmount();
             }
         }
-
         return total;
     }
-    public List<Map<String, Object>> getRevenueAnalytics(
-            int period
-    ) {
-
-        LocalDateTime startDate =
-                LocalDateTime.now()
-                        .minusDays(period);
-
-        List<Object[]> results =
-                paymentRepository
-                        .getDailyRevenueAnalytics(
-                                startDate
-                        );
-
-        List<Map<String, Object>> response =
-                new ArrayList<>();
-
-        DateTimeFormatter formatter =
-                DateTimeFormatter.ofPattern(
-                        "dd MMM"
-                );
-
+    public List<Map<String, Object>> getRevenueAnalytics(int period) {
+        LocalDateTime startDate = LocalDateTime.now().minusDays(period);
+        List<Object[]> results = paymentRepository.getDailyRevenueAnalytics(startDate);
+        List<Map<String, Object>> response = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM");
         for (Object[] row : results) {
-
-            String dateValue =
-                    row[0].toString();
-
-            LocalDate date =
-                    LocalDate.parse(dateValue);
-
-            Map<String, Object> data =
-                    new LinkedHashMap<>();
-
-            data.put(
-                    "date",
-                    date.format(formatter)
+            String dateValue = row[0].toString();
+            LocalDate date = LocalDate.parse(dateValue);
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("date", date.format(formatter)
             );
-
-            data.put(
-                    "revenue",
-                    ((Number) row[1])
-                            .doubleValue()
+            data.put("revenue",
+                    ((Number) row[1]).doubleValue()
             );
             data.put("recovered", ((Number) row[2]).doubleValue());
             response.add(data);
         }
-
         return response;
     }
     public Map<String, Object> getAIRecoveryAnalytics() {
-
         List<RecoveryAttempt> attempts = recoveryAttemptRepository.findAll();
-
         long failedPayments = paymentRepository.findByStatus(PaymentStatus.FAILED).size();
         Map<String, Object> failureReasonAnalysis = new LinkedHashMap<>();
         for (FailureReason failureReason : FailureReason.values()) {
@@ -167,14 +111,9 @@ public class AnalyticsService {
             if (totalAttempts == 0) {
                 continue;
             }
-            double successRate =
-                    (successful * 100.0)
-                            / totalAttempts;
+            double successRate = (successful * 100.0) / totalAttempts;
             String recommendedAction =
-                    recoveryDecisionService
-                            .decideAction(
-                                    failureReason
-                            );
+                    recoveryDecisionService.decideAction(failureReason);
             double dataConfidence;
             if (totalAttempts >= 10) {
                 dataConfidence = 0.95;

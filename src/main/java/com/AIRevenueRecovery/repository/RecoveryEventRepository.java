@@ -5,9 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface RecoveryEventRepository
-        extends JpaRepository<RecoveryEvent, Long> {
-
+public interface RecoveryEventRepository extends JpaRepository<RecoveryEvent, Long> {
     List<RecoveryEvent>
     findByPaymentIdOrderByCreatedAtDesc(Long paymentId);
     List<RecoveryEvent>

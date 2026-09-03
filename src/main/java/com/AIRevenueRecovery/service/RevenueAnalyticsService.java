@@ -4,7 +4,6 @@ import com.AIRevenueRecovery.entity.PaymentStatus;
 import com.AIRevenueRecovery.entity.RevenueAnalyticsResponse;
 import com.AIRevenueRecovery.repository.PaymentRepository;
 import org.springframework.stereotype.Service;
-
 @Service
 public class RevenueAnalyticsService {
     private final PaymentRepository paymentRepository;
@@ -12,8 +11,7 @@ public class RevenueAnalyticsService {
         this.paymentRepository = paymentRepository;
     }
     public RevenueAnalyticsResponse getRevenueAnalytics() {
-        double totalRevenue = getAmount(PaymentStatus.SUCCESS)
-                        + getAmount(PaymentStatus.FAILED) + getAmount(PaymentStatus.RETRYING)
+        double totalRevenue = getAmount(PaymentStatus.SUCCESS) + getAmount(PaymentStatus.FAILED) + getAmount(PaymentStatus.RETRYING)
                         + getAmount(PaymentStatus.CREATED) + getAmount(PaymentStatus.RECOVERED);
         double successfulRevenue = getAmount(PaymentStatus.SUCCESS);
         double failedRevenue = getAmount(PaymentStatus.FAILED);
@@ -23,8 +21,7 @@ public class RevenueAnalyticsService {
         if (totalRevenue > 0) {
             recoveryRate = ((successfulRevenue + recoveredRevenue) / totalRevenue) * 100.0;
         }
-        return new RevenueAnalyticsResponse(
-                totalRevenue,
+        return new RevenueAnalyticsResponse(totalRevenue,
                 successfulRevenue, failedRevenue, retryingRevenue, recoveredRevenue, recoveryRate
         );
     }

@@ -14,68 +14,34 @@ import java.util.Map;
 
 @Service
 public class AIRecoveryExecutionService {
-
     private final PaymentRepository paymentRepository;
     private final RecoveryAttemptRepository recoveryAttemptRepository;
     private final AIRecoveryDecisionService aiRecoveryDecisionService;
-
-    public AIRecoveryExecutionService(
-            PaymentRepository paymentRepository,
-            RecoveryAttemptRepository recoveryAttemptRepository,
-            AIRecoveryDecisionService aiRecoveryDecisionService
-    ) {
+    public AIRecoveryExecutionService(PaymentRepository paymentRepository, RecoveryAttemptRepository recoveryAttemptRepository,
+            AIRecoveryDecisionService aiRecoveryDecisionService) {
         this.paymentRepository = paymentRepository;
         this.recoveryAttemptRepository = recoveryAttemptRepository;
         this.aiRecoveryDecisionService = aiRecoveryDecisionService;
     }
     public Map<String, Object> executeRecovery(Long paymentId) {
-        Payment payment =
-                paymentRepository.findById(paymentId).orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+        Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
         if (payment.getStatus() != PaymentStatus.FAILED) {
             throw new IllegalStateException("AI recovery can only be executed for FAILED payments");
         }
         AIRecoveryDecisionService.RecoveryDecision decision = aiRecoveryDecisionService.decide(payment);
         String action = decision.action();
-        if ("SEND_PAYMENT_REMINDER".equals(action)
-                && payment.isReminderSent()) {
-
-            Map<String, Object> response =
-                    new LinkedHashMap<>();
-
-            response.put(
-                    "paymentId",
-                    payment.getPaymentId()
-            );
-
-            response.put(
-                    "databaseId",
-                    payment.getId()
-            );
-
-            response.put(
-                    "failureReason",
-                    payment.getFailureReason()
-            );
-
-            response.put(
-                    "action",
-                    action
-            );
-
-            response.put(
-                    "result",
-                    "REMINDER_ALREADY_SENT"
-            );
-
-            response.put(
-                    "aiRecommendation",
+        if ("SEND_PAYMENT_REMINDER".equals(action) && payment.isReminderSent()) {
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("paymentId", payment.getPaymentId());
+            response.put("databaseId", payment.getId());
+            response.put("failureReason", payment.getFailureReason());
+            response.put("action", action);
+            response.put("result", "REMINDER_ALREADY_SENT");
+            response.put("aiRecommendation",
                     decision.recommendation()
             );
 
-            response.put(
-                    "aiConfidence",
-                    decision.confidence()
-            );
+            response.put("aiConfidence", decision.confidence());
             response.put("reminderSentAt", payment.getReminderSentAt());
             return response;
         }

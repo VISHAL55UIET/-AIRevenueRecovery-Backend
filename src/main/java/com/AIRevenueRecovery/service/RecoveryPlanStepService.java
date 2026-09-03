@@ -12,7 +12,6 @@ import java.util.List;
 
 @Service
 public class RecoveryPlanStepService {
-
     private final RecoveryPlanStepRepository recoveryPlanStepRepository;
     private final RecoveryPlanRepository recoveryPlanRepository;
     public RecoveryPlanStepService(

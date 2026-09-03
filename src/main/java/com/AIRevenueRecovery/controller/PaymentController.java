@@ -4,11 +4,12 @@ import com.AIRevenueRecovery.dto.PaymentRequest;
 import com.AIRevenueRecovery.dto.RazorpayOrderResponse;
 import com.AIRevenueRecovery.dto.RazorpayPaymentVerificationRequest;
 import com.AIRevenueRecovery.entity.FailureReason;
+import com.AIRevenueRecovery.entity.IdempotencyRequest;
 import com.AIRevenueRecovery.entity.Payment;
 import com.AIRevenueRecovery.entity.PaymentStatus;
-import com.AIRevenueRecovery.entity.IdempotencyRequest;
 import com.AIRevenueRecovery.service.IdempotencyService;
 import com.AIRevenueRecovery.service.PaymentService;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,6 +32,7 @@ public class PaymentController {
     }
 
     @PostMapping
+    @RateLimiter(name = "paymentApi")
     public Payment createPayment(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody PaymentRequest request) {
@@ -80,12 +82,11 @@ public class PaymentController {
             );
         }
 
-        IdempotencyRequest idempotencyRequest =
-                idempotencyService.createRequest(
-                        idempotencyKey,
-                        "CREATE_PAYMENT",
-                        null
-                );
+        idempotencyService.createRequest(
+                idempotencyKey,
+                "CREATE_PAYMENT",
+                null
+        );
 
         Payment savedPayment =
                 paymentService.createPayment(payment);
@@ -143,7 +144,9 @@ public class PaymentController {
 
         return ResponseEntity.noContent().build();
     }
+
     @PostMapping("/{paymentId}/razorpay-order")
+    @RateLimiter(name = "paymentApi")
     public RazorpayOrderResponse createRazorpayOrder(
             @PathVariable Long paymentId) {
 
@@ -151,7 +154,9 @@ public class PaymentController {
                 paymentId
         );
     }
+
     @PostMapping("/{paymentId}/razorpay-verify")
+    @RateLimiter(name = "paymentApi")
     public ResponseEntity<Payment> verifyRazorpayPayment(
             @PathVariable Long paymentId,
             @RequestBody RazorpayPaymentVerificationRequest request) {

@@ -12,19 +12,13 @@ public class KafkaEventConsumer {
             groupId = "ai-revenue-recovery"
     )
     public void consume(String message) {
-
         System.out.println(
                 "========================================"
         );
-
         System.out.println(
                 "Kafka event received:"
         );
-
-        System.out.println(
-                message
-        );
-
+        System.out.println(message);
         System.out.println(
                 "========================================"
         );

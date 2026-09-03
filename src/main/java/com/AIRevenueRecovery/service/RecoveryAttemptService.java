@@ -1,11 +1,9 @@
 package com.AIRevenueRecovery.service;
 
-import com.AIRevenueRecovery.entity.FailureReason;
 import com.AIRevenueRecovery.entity.Payment;
 import com.AIRevenueRecovery.entity.PaymentStatus;
 import com.AIRevenueRecovery.entity.RecoveryAttempt;
 import com.AIRevenueRecovery.entity.RecoveryPlan;
-import com.AIRevenueRecovery.entity.RecoveryEvent;
 import com.AIRevenueRecovery.exception.RecoveryAttemptNotFoundException;
 import com.AIRevenueRecovery.repository.PaymentRepository;
 import com.AIRevenueRecovery.repository.RecoveryAttemptRepository;

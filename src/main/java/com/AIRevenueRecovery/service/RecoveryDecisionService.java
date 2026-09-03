@@ -17,7 +17,6 @@ public class RecoveryDecisionService {
         return decideAction(failureReason, 0);
     }
     public String decideAction(FailureReason failureReason, Integer retryCount) {
-
         if (failureReason == null) {
             return "MANUAL_REVIEW";
         }

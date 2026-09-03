@@ -31,57 +31,24 @@ public class RecoveryPlanService {
         this.paymentRepository = paymentRepository;
         this.aiRecoveryDecisionService = aiRecoveryDecisionService;
     }
-
-    // ============================================================
-    // CREATE RECOVERY PLAN
-    // ============================================================
-
     @Transactional
     public RecoveryPlan createPlan(Long paymentId) {
-
         Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Payment not found with ID: " + paymentId
-                        )
-                );
-
-        /*
-         * Recovery is only meaningful for failed payments.
-         */
+                .orElseThrow(() -> new RuntimeException("Payment not found with ID: " + paymentId));
         if (payment.getStatus() != PaymentStatus.FAILED) {
             throw new RuntimeException(
                     "Recovery plan can only be created for failed payments"
             );
         }
-
-        /*
-         * Do not create duplicate recovery plans.
-         */
-        RecoveryPlan existingPlan =
-                recoveryPlanRepository
-                        .findByPaymentId(paymentId)
-                        .orElse(null);
+        RecoveryPlan existingPlan = recoveryPlanRepository.findByPaymentId(paymentId).orElse(null);
 
         if (existingPlan != null) {
             return existingPlan;
         }
-
-        /*
-         * Ask AI for the first recovery decision.
-         */
-        AIRecoveryDecisionService.RecoveryDecision decision =
-                aiRecoveryDecisionService.decide(payment);
-
-        String action = applySafetyRules(
-                payment,
-                decision
-        );
-
+        AIRecoveryDecisionService.RecoveryDecision decision = aiRecoveryDecisionService.decide(payment);
+        String action = applySafetyRules(payment, decision);
         LocalDateTime now = LocalDateTime.now();
-
         RecoveryPlan recoveryPlan = new RecoveryPlan();
-
         recoveryPlan.setPayment(payment);
         recoveryPlan.setStrategy(action);
         recoveryPlan.setCurrentStep(1);

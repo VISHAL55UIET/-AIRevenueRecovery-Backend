@@ -33,17 +33,11 @@ public class RevenueRecoveryService {
     @Transactional
     public RecoveryAttempt recoverPayment(Long paymentId) {
 
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() ->
-                        new PaymentNotFoundException(
-                                "Payment not found with ID: " + paymentId
+        Payment payment = paymentRepository.findById(paymentId).orElseThrow(() ->
+                        new PaymentNotFoundException("Payment not found with ID: " + paymentId
                         ));
-
         if (payment.getStatus() != PaymentStatus.FAILED) {
-
-            throw new RuntimeException(
-                    "Payment is not failed. Current status: "
-                            + payment.getStatus()
+            throw new RuntimeException("Payment is not failed. Current status: " + payment.getStatus()
             );
         }
 
@@ -75,145 +69,72 @@ public class RevenueRecoveryService {
                         .orElse(null);
 
         if (pendingAttempt != null) {
-
-            throw new RuntimeException(
-                    "Recovery attempt is already pending for payment "
-                            + paymentId
+            throw new RuntimeException("Recovery attempt is already pending for payment " + paymentId
             );
         }
-
-        /*
-         * Prevent duplicate attempt number.
-         */
         RecoveryAttempt existingAttempt =
-                recoveryAttemptRepository
-                        .findByPaymentIdAndAttemptNumber(
-                                paymentId,
-                                nextAttempt
+                recoveryAttemptRepository.findByPaymentIdAndAttemptNumber(
+                                paymentId, nextAttempt
                         )
                         .orElse(null);
-
         if (existingAttempt != null) {
-
-            throw new RuntimeException(
-                    "Recovery attempt already exists for payment "
-                            + paymentId
-                            + " with attempt number "
-                            + nextAttempt
+            throw new RuntimeException("Recovery attempt already exists for payment " + paymentId
+                            + " with attempt number " + nextAttempt
             );
         }
-
-        /*
-         * Decide recovery action.
-         */
         String action =
                 recoveryDecisionService.decideAction(
                         payment.getFailureReason()
                 );
-
-        /*
-         * Block recovery for fraud.
-         */
         if ("BLOCK_RECOVERY".equals(action)) {
-
             throw new RuntimeException(
                     "Recovery blocked because fraud was detected"
             );
         }
-
-        /*
-         * AI recovery analysis.
-         */
-        Map<String, Object> aiAnalysis =
-                aiRecoveryService.analyzeRecovery(
-                        payment.getFailureReason()
-                );
-
-        /*
-         * Create recovery attempt.
-         */
-        RecoveryAttempt attempt =
-                new RecoveryAttempt();
-
+        Map<String, Object> aiAnalysis = aiRecoveryService.analyzeRecovery(
+                        payment.getFailureReason());
+        RecoveryAttempt attempt = new RecoveryAttempt();
         attempt.setPayment(payment);
-
-        attempt.setFailureReason(
-                payment.getFailureReason()
+        attempt.setFailureReason(payment.getFailureReason());
+        attempt.setAttemptNumber(nextAttempt
         );
-
-        attempt.setAttemptNumber(
-                nextAttempt
-        );
-
         attempt.setAction(
                 action
         );
-
         attempt.setResult(
                 "PENDING"
         );
-
-        attempt.setAiRecommendation(
-                (String) aiAnalysis.get("recommendedAction")
+        attempt.setAiRecommendation((String) aiAnalysis.get("recommendedAction")
         );
-
-        Object confidence =
-                aiAnalysis.get("confidence");
-
+        Object confidence = aiAnalysis.get("confidence");
         if (confidence instanceof Number) {
-
             attempt.setAiConfidence(
                     ((Number) confidence).doubleValue()
             );
         }
-
         attempt.setAttemptedAt(
                 LocalDateTime.now()
         );
-
-        /*
-         * Update payment retry information.
-         */
-        payment.setRetryCount(
-                nextAttempt
+        payment.setRetryCount(nextAttempt
         );
-
-        payment.setStatus(
-                PaymentStatus.RETRYING
-        );
-
-        payment.setNextRetryAt(
-                calculateNextRetryTime(nextAttempt)
-        );
-
-        payment.setUpdatedAt(
-                LocalDateTime.now()
-        );
-
+        payment.setStatus(PaymentStatus.RETRYING);
+        payment.setNextRetryAt(calculateNextRetryTime(nextAttempt));
+        payment.setUpdatedAt(LocalDateTime.now());
         paymentRepository.save(payment);
-
-        /*
-         * Save recovery attempt.
-         */
         return recoveryAttemptRepository.save(
                 attempt
         );
     }
 
-    private LocalDateTime calculateNextRetryTime(
-            int attemptNumber) {
-
+    private LocalDateTime calculateNextRetryTime(int attemptNumber) {
         LocalDateTime now =
                 LocalDateTime.now();
-
         if (attemptNumber == 1) {
             return now.plusSeconds(30);
         }
-
         if (attemptNumber == 2) {
             return now.plusSeconds(60);
         }
-
         return now.plusSeconds(120);
     }
 }

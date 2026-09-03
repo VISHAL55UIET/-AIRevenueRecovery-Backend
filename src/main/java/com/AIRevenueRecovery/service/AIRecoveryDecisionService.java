@@ -8,11 +8,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
 @Service
 public class AIRecoveryDecisionService {
     private final ChatClient chatClient;

@@ -25,80 +25,34 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
     private final CustomUserDetailsService userDetailsService;
-
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
 
-    /*
-     * Frontend URL
-     *
-     * Local:
-     * http://localhost:5173
-     *
-     * Production:
-     * APP_FRONTEND_URL from Railway
-     */
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
-
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
             CustomUserDetailsService userDetailsService,
-            OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler
-    ) {
-
-        this.jwtAuthenticationFilter =
-                jwtAuthenticationFilter;
-
-        this.userDetailsService =
-                userDetailsService;
-
-        this.oAuth2LoginSuccessHandler =
-                oAuth2LoginSuccessHandler;
+            OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.userDetailsService = userDetailsService;
+        this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
     }
-
-
-    // =====================================================
-    // AUTHENTICATION PROVIDER
-    // =====================================================
 
     @Bean
     public AuthenticationProvider authenticationProvider(
-            org.springframework.security.crypto.password.PasswordEncoder passwordEncoder
-    ) {
-
-        DaoAuthenticationProvider provider =
-                new DaoAuthenticationProvider(
-                        userDetailsService
-                );
-
-        provider.setPasswordEncoder(
-                passwordEncoder
-        );
-
+            org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder);
         return provider;
     }
 
-
-    // =====================================================
-    // AUTHENTICATION MANAGER
-    // =====================================================
-
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration configuration
-    ) throws Exception {
-
-        return configuration
-                .getAuthenticationManager();
+            AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
     }
-
-
-    // =====================================================
-    // SECURITY FILTER CHAIN
-    // =====================================================
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -108,18 +62,9 @@ public class SecurityConfig {
 
         http
 
-                // -------------------------------------------------
-                // CSRF
-                // -------------------------------------------------
-
                 .csrf(csrf ->
                         csrf.disable()
                 )
-
-
-                // -------------------------------------------------
-                // CORS
-                // -------------------------------------------------
 
                 .cors(cors ->
                         cors.configurationSource(
@@ -127,77 +72,40 @@ public class SecurityConfig {
                         )
                 )
 
-
-                // -------------------------------------------------
-                // SESSION
-                // -------------------------------------------------
-
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(
-                                SessionCreationPolicy.IF_REQUIRED
-                        )
-                )
-
-
-                // -------------------------------------------------
-                // AUTHORIZATION
-                // -------------------------------------------------
+                .sessionManagement(session -> session.sessionCreationPolicy(
+                        SessionCreationPolicy.IF_REQUIRED))
 
                 .authorizeHttpRequests(auth -> auth
-
-                        // Authentication APIs
-                        .requestMatchers(
-                                "/api/auth/**"
-                        )
+                        .requestMatchers("/api/auth/**")
                         .permitAll()
 
-
-                        // OAuth2
-                        .requestMatchers(
-                                "/oauth2/**"
-                        )
+                        .requestMatchers("/api/payments/**")
                         .permitAll()
 
-
-                        .requestMatchers(
-                                "/login/**"
-                        )
+                        .requestMatchers("/oauth2/**")
                         .permitAll()
 
+                        .requestMatchers("/login/**")
+                        .permitAll()
 
-                        // Swagger
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         )
                         .permitAll()
 
-
-                        // Actuator
                         .requestMatchers(
                                 "/actuator/**"
                         )
                         .permitAll()
 
-
-                        // Everything else requires authentication
                         .anyRequest()
                         .authenticated()
                 )
 
-
-                // -------------------------------------------------
-                // AUTHENTICATION PROVIDER
-                // -------------------------------------------------
-
                 .authenticationProvider(
                         authenticationProvider
                 )
-
-
-                // -------------------------------------------------
-                // GOOGLE OAUTH2
-                // -------------------------------------------------
 
                 .oauth2Login(oauth2 ->
                         oauth2.successHandler(
@@ -205,24 +113,13 @@ public class SecurityConfig {
                         )
                 )
 
-
-                // -------------------------------------------------
-                // JWT FILTER
-                // -------------------------------------------------
-
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
                 );
 
-
         return http.build();
     }
-
-
-    // =====================================================
-    // CORS CONFIGURATION
-    // =====================================================
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -230,29 +127,12 @@ public class SecurityConfig {
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
-
-        /*
-         * Allowed frontend origins
-         *
-         * Local development:
-         * http://localhost:5173
-         *
-         * Production:
-         * value comes from APP_FRONTEND_URL
-         * through application.properties
-         */
-
         configuration.setAllowedOrigins(
                 List.of(
                         "http://localhost:5173",
                         frontendUrl
                 )
         );
-
-
-        // -------------------------------------------------
-        // HTTP METHODS
-        // -------------------------------------------------
 
         configuration.setAllowedMethods(
                 List.of(
@@ -265,23 +145,14 @@ public class SecurityConfig {
                 )
         );
 
-
-        // -------------------------------------------------
-        // HEADERS
-        // -------------------------------------------------
-
         configuration.setAllowedHeaders(
                 List.of("*")
         );
 
-
-        // -------------------------------------------------
-        // CREDENTIALS
-        // -------------------------------------------------
-
         configuration.setAllowCredentials(
                 true
         );
+
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
 
@@ -289,7 +160,6 @@ public class SecurityConfig {
                 "/**",
                 configuration
         );
-
 
         return source;
     }

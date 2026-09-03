@@ -8,12 +8,28 @@ import java.util.Optional;
 
 public interface RecoveryAttemptRepository
         extends JpaRepository<RecoveryAttempt, Long> {
-    List<RecoveryAttempt> findByPaymentIdOrderByAttemptNumberAsc(Long paymentId);
-    List<RecoveryAttempt> findByPaymentId(Long paymentId);
-    Optional<RecoveryAttempt> findByPaymentIdAndAttemptNumber(
-            Long paymentId, Integer attemptNumber);
+
+    List<RecoveryAttempt>
+    findByPaymentIdOrderByAttemptNumberAsc(Long paymentId);
+
+    List<RecoveryAttempt>
+    findByPaymentId(Long paymentId);
+
     Optional<RecoveryAttempt>
-    findFirstByPaymentIdAndResultOrderByAttemptedAtDesc(Long paymentId, String result);
+    findByPaymentIdAndAttemptNumber(Long paymentId, Integer attemptNumber);
+    Optional<RecoveryAttempt>
+    findByRazorpayOrderId(String razorpayOrderId);
+    Optional<RecoveryAttempt>
+    findByRazorpayPaymentId(String razorpayPaymentId);
+
+    Optional<RecoveryAttempt>
+    findFirstByPaymentIdAndResultOrderByAttemptedAtDesc(
+            Long paymentId,
+            String result
+    );
+
     long countByPaymentId(Long paymentId);
-    List<RecoveryAttempt> findTop10ByOrderByAttemptedAtDesc();
+
+    List<RecoveryAttempt>
+    findTop10ByOrderByAttemptedAtDesc();
 }
