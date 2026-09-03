@@ -44,7 +44,7 @@ The project was designed around real backend engineering concerns such as reliab
 
 ---
 
-# 🎯 Problem Statement
+#  Problem Statement
 
 Payment failures are common in real-world payment systems.
 
@@ -98,7 +98,7 @@ The platform therefore combines deterministic recovery rules with AI-assisted re
 
 ---
 
-# 🏗️ High-Level Architecture
+#  High-Level Architecture
 
 ```text
                          ┌──────────────────────┐
@@ -163,7 +163,7 @@ External dependencies are accessed through dedicated service boundaries.
 
 ---
 
-# 🔄 Complete Payment Recovery Flow
+#  Complete Payment Recovery Flow
 
 ```text
                        PAYMENT
@@ -221,7 +221,7 @@ External dependencies are accessed through dedicated service boundaries.
 
 ---
 
-# 🤖 AI Recovery
+#  AI Recovery
 
 The platform integrates an AI provider through the Spring AI / OpenAI-compatible interface.
 
@@ -273,7 +273,7 @@ This keeps business-critical execution under deterministic application control.
 
 ---
 
-# 🧠 Recovery Decision Engine
+#  Recovery Decision Engine
 
 The recovery decision layer maps payment failure reasons to appropriate recovery actions.
 
@@ -303,7 +303,7 @@ The system first decides what should happen and then executes that decision.
 
 ---
 
-# 🔄 Saga Pattern
+#  Saga Pattern
 
 The recovery workflow uses a Saga-style orchestration approach.
 
@@ -354,7 +354,7 @@ This makes the workflow inspectable and resumable.
 
 ---
 
-# ♻️ Saga Resume
+#  Saga Resume
 
 A major part of the recovery architecture is the ability to resume a failed Saga.
 
@@ -405,7 +405,7 @@ This protects against duplicate recovery execution.
 
 ---
 
-# 🔐 Idempotency
+#  Idempotency
 
 Idempotency is important for payment systems because clients can retry requests when they experience:
 
@@ -471,7 +471,7 @@ Database uniqueness is also important as an additional protection against concur
 
 ---
 
-# 🔁 Retry & Backoff
+#  Retry & Backoff
 
 Recovery operations should not retry indefinitely.
 
@@ -505,7 +505,7 @@ Retry handling protects the system from:
 
 ---
 
-# ⏰ Scheduled Recovery
+#  Scheduled Recovery
 
 Eligible failed payments can be processed automatically according to retry/recovery timing.
 
@@ -527,7 +527,7 @@ This allows the recovery engine to operate without requiring manual intervention
 
 ---
 
-# 🧩 Recovery Plans
+#  Recovery Plans
 
 Recovery decisions are separated from their execution.
 
@@ -555,7 +555,7 @@ This makes the recovery system extensible.
 
 ---
 
-# 📝 Recovery Attempts
+#  Recovery Attempts
 
 Every recovery operation can be tracked through recovery attempts.
 
@@ -589,7 +589,7 @@ This allows the system to distinguish between the original payment and subsequen
 
 ---
 
-# 📜 Recovery Events
+#  Recovery Events
 
 Recovery events provide an audit trail of important workflow transitions.
 
@@ -647,7 +647,7 @@ This is useful for:
 
 ---
 
-# 💰 Revenue Recovery
+#  Revenue Recovery
 
 The platform tracks revenue recovered through successful recovery operations.
 
@@ -674,7 +674,7 @@ Important metrics include:
 
 ---
 
-# 📊 Analytics
+#  Analytics
 
 The system provides analytics around payment recovery.
 
@@ -701,7 +701,7 @@ GET /api/analytics/revenue?period=30
 
 ---
 
-# 📧 Email Communication
+#  Email Communication
 
 The recovery system can use email communication as part of the recovery workflow.
 
@@ -721,7 +721,7 @@ Email functionality can therefore become one of the controlled recovery actions.
 
 ---
 
-# 💳 Payment Gateway Integration
+#  Payment Gateway Integration
 
 Payment gateway operations are isolated behind a dedicated payment gateway service.
 
@@ -739,7 +739,7 @@ This separation prevents payment-provider-specific implementation from leaking i
 
 ---
 
-# 🛡️ Resilience4j
+#  Resilience4j
 
 The project uses Resilience4j-based resilience patterns for external service reliability.
 
@@ -777,7 +777,7 @@ The goal is to prevent an external dependency failure from cascading through the
 
 ---
 
-# 🚦 API Rate Limiting
+#  API Rate Limiting
 Kafka Event Processing
 Transactional Outbox
 Razorpay Order Creation
@@ -820,7 +820,7 @@ Kafka producer reliability is configured with acknowledgements and producer retr
 
 ---
 
-# 📦 Transactional Outbox
+#  Transactional Outbox
 
 The project includes an Outbox Publisher configuration for durable event publication.
 
@@ -838,7 +838,7 @@ The outbox publisher processes records in batches and supports retry limits, hel
 
 ---
 
-# 💳 Razorpay Payment Flow
+#  Razorpay Payment Flow
 
 The application supports a Razorpay-based payment flow for recovery.
 
@@ -860,7 +860,7 @@ The backend exposes dedicated endpoints for creating Razorpay orders and verifyi
 
 ---
 
-# 🤖 Recovery Intelligence
+#  Recovery Intelligence
 
 The recovery intelligence service analyzes a failed payment together with customer payment history and retry history.
 
@@ -901,7 +901,7 @@ This keeps the recovery recommendation explainable instead of returning only a r
 
 ---
 
-# 🚨 Rate Limit Error Handling
+#  Rate Limit Error Handling
 
 Rate-limit failures are returned as a proper HTTP `429 Too Many Requests` response so API clients and the frontend can distinguish throttling from other application errors.
 
@@ -919,7 +919,7 @@ This provides a clean contract for frontend error handling and operational monit
 
 ---
 
-# 🛡️ Fraud Safety
+#  Fraud Safety
 
 Not every failed payment should be automatically recovered.
 
@@ -937,7 +937,7 @@ The system should not blindly retry a payment when the failure indicates a poten
 
 ---
 
-# 🔐 Security
+#  Security
 
 The application contains security infrastructure including:
 
@@ -951,7 +951,7 @@ Authentication and authorization are kept separate from the core payment recover
 
 ---
 
-# 🔑 Secret Management
+#  Secret Management
 
 Sensitive credentials should never be hardcoded into the source code.
 
@@ -1020,7 +1020,7 @@ to GitHub.
 
 ---
 
-# 🗃️ Database
+# Database
 
 The application uses MySQL for persistent state.
 
@@ -1044,7 +1044,7 @@ This allows the system to recover from application restarts and resume persisted
 
 ---
 
-# 🧱 Backend Layering
+#  Backend Layering
 
 The backend follows:
 
@@ -1097,7 +1097,7 @@ Responsible for persistence using:
 
 ---
 
-# 📂 Backend Structure
+#  Backend Structure
 
 ```text
 src/main/java/com/AIRevenueRecovery
@@ -1245,7 +1245,7 @@ Unsupported / Invalid State
 
 ---
 
-# 🧯 Failure Scenarios
+#  Failure Scenarios
 
 ## Duplicate Request
 
@@ -1305,7 +1305,7 @@ No Duplicate Execution
 
 ---
 
-# 🧾 Exception Handling
+#  Exception Handling
 
 The backend uses centralized exception handling.
 
@@ -1325,7 +1325,7 @@ This keeps controllers focused on HTTP handling and avoids exposing raw internal
 
 ---
 
-# 🔍 Auditability
+#  Auditability
 
 The platform is designed so that an operator can understand the lifecycle of a failed payment.
 
@@ -1355,7 +1355,7 @@ The information is distributed across payment, recovery attempt, event, plan, Sa
 
 ---
 
-# 🖥️ Frontend
+#  Frontend
 
 The project includes a React/Vite frontend for operational visibility.
 
@@ -1412,7 +1412,7 @@ If a Saga has already been completed, the frontend can display the completed sta
 
 ---
 
-# 📈 Revenue Dashboard
+#  Revenue Dashboard
 
 The frontend includes revenue recovery visualization.
 
@@ -1440,7 +1440,7 @@ Revenue Over Time
 
 ---
 
-# 🧑‍💻 Local Development
+# Local Development
 
 ## Requirements
 
@@ -1479,7 +1479,7 @@ MYSQLPASSWORD=<your-local-password>
 
 ---
 
-# ⚙️ Backend Configuration
+#  Backend Configuration
 
 Use environment variables for secrets.
 
@@ -1512,7 +1512,7 @@ spring.security.oauth2.client.registration.google.client-secret=${GOOGLE_CLIENT_
 
 ---
 
-# ▶️ Run Backend
+# Run Backend
 
 ### Windows
 
@@ -1638,7 +1638,7 @@ Production credentials must be stored as deployment environment variables.
 
 ---
 
-# 🔒 Production Security Rules
+#  Production Security Rules
 
 Never commit real credentials to GitHub.
 
@@ -1669,7 +1669,7 @@ spring.datasource.password=real-password
 
 ---
 
-# 🧠 Design Principles
+#  Design Principles
 
 The project follows backend engineering principles including:
 
