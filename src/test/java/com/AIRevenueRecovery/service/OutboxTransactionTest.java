@@ -17,13 +17,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 class OutboxTransactionTest {
-
     @Autowired
     private RecoverySagaRepository recoverySagaRepository;
 
     @Autowired
     private OutboxEventRepository outboxEventRepository;
-
     @Test
     @Transactional
     void shouldPersistSagaAndOutboxInSameTransaction() {
@@ -31,25 +29,16 @@ class OutboxTransactionTest {
         String sagaId =
                 "TEST-SAGA-" + UUID.randomUUID();
 
-        RecoverySaga saga =
-                new RecoverySaga();
-
+        RecoverySaga saga = new RecoverySaga();
         saga.setSagaId(sagaId);
         saga.setPaymentId(999999L);
         saga.setCurrentStep("STARTED");
         saga.setStatus("STARTED");
-
-        LocalDateTime now =
-                LocalDateTime.now();
-
+        LocalDateTime now = LocalDateTime.now();
         saga.setStartedAt(now);
         saga.setUpdatedAt(now);
-
         recoverySagaRepository.save(saga);
-
-        OutboxEvent event =
-                new OutboxEvent();
-
+        OutboxEvent event = new OutboxEvent();
         event.setAggregateType("RecoverySaga");
         event.setAggregateId(sagaId);
         event.setEventType("RECOVERY_SAGA_STARTED");
@@ -58,28 +47,19 @@ class OutboxTransactionTest {
         );
         event.setStatus("PENDING");
         event.setRetryCount(0);
-
         outboxEventRepository.save(event);
-
         recoverySagaRepository.flush();
         outboxEventRepository.flush();
-
         assertNotNull(saga.getId());
         assertNotNull(event.getId());
-
-        assertEquals(
-                sagaId,
-                event.getAggregateId()
+        assertEquals(sagaId, event.getAggregateId()
         );
 
         assertEquals(
-                "PENDING",
-                event.getStatus()
+                "PENDING", event.getStatus()
         );
 
-        assertEquals(
-                "RECOVERY_SAGA_STARTED",
-                event.getEventType()
+        assertEquals("RECOVERY_SAGA_STARTED", event.getEventType()
         );
     }
 }
