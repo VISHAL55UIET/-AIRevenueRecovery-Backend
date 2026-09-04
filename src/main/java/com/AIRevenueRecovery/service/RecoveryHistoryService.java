@@ -14,7 +14,6 @@ import java.util.List;
 
 @Service
 public class RecoveryHistoryService {
-
     private final PaymentRepository paymentRepository;
     private final RecoveryAttemptRepository recoveryAttemptRepository;
     public RecoveryHistoryService(
@@ -24,8 +23,7 @@ public class RecoveryHistoryService {
         this.recoveryAttemptRepository = recoveryAttemptRepository;
     }
     public RecoveryHistoryResponse getRecoveryHistory(Long paymentId) {
-        Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new PaymentNotFoundException("Payment not found with ID: "
-                                                + paymentId));
+        Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new PaymentNotFoundException("Payment not found with ID: " + paymentId));
         List<RecoveryAttempt> attempts = recoveryAttemptRepository.findByPaymentId(paymentId);
         attempts.sort(Comparator.comparing(RecoveryAttempt::getAttemptNumber, Comparator.nullsLast(Comparator.reverseOrder())));
         List<RecoveryAttemptHistoryResponse>attemptResponses = attempts.stream().map(this::mapAttempt).toList();

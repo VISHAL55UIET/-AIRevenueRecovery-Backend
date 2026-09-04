@@ -16,19 +16,21 @@ import java.util.UUID;
 
 @Service
 public class RecoverySagaOrchestrator {
-
+    private final AuditTrailService auditTrailService;
     private final PaymentRepository paymentRepository;
     private final RecoverySagaRepository recoverySagaRepository;
     private final AIRecoveryDecisionService aiRecoveryDecisionService;
     private final AIRecoveryExecutionService aiRecoveryExecutionService;
     private final OutboxEventService outboxEventService;
     public RecoverySagaOrchestrator(
+            AuditTrailService auditTrailService,
             PaymentRepository paymentRepository,
             RecoverySagaRepository recoverySagaRepository,
             AIRecoveryDecisionService aiRecoveryDecisionService,
             AIRecoveryExecutionService aiRecoveryExecutionService,
             OutboxEventService outboxEventService
     ) {
+        this.auditTrailService = auditTrailService;
         this.paymentRepository = paymentRepository;
         this.recoverySagaRepository = recoverySagaRepository;
         this.aiRecoveryDecisionService = aiRecoveryDecisionService;
@@ -162,9 +164,7 @@ public class RecoverySagaOrchestrator {
                         RecoverySagaState.COMPLETION
                 );
                 recoverySagaRepository.save(saga);
-                transition(
-                        saga, RecoverySagaState.COMPLETED
-                );
+                transition(saga, RecoverySagaState.COMPLETED);
                 recoverySagaRepository.save(saga);
                 response.put("status", "COMPLETED");
                 response.put(
@@ -188,38 +188,21 @@ public class RecoverySagaOrchestrator {
             }
 
             response.put("status", "FAILED");
-            response.put(
-                    "message",
-                    "Saga is in an unsupported state"
-            );
-            response.put(
-                    "currentStep",
-                    saga.getCurrentStep()
-            );
-
+            response.put("message", "Saga is in an unsupported state");
+            response.put("currentStep", saga.getCurrentStep());
             return response;
-
         } catch (Exception exception) {
-
-            markSagaFailed(
-                    saga,
-                    exception
-            );
-
+            markSagaFailed(saga, exception);
             recoverySagaRepository.save(saga);
-
             response.put("status", "FAILED");
             response.put("sagaId", saga.getSagaId());
             response.put("paymentId", paymentId);
-            response.put(
-                    "currentStep",
+            response.put("currentStep",
                     saga.getCurrentStep()
             );
-            response.put(
-                    "error",
+            response.put("error",
                     exception.getMessage()
             );
-
             return response;
         }
     }
@@ -227,65 +210,41 @@ public class RecoverySagaOrchestrator {
     @Transactional
     public Map<String, Object> executeSaga(Long paymentId) {
 
-        Map<String, Object> response =
-                new LinkedHashMap<>();
-
-        Optional<Payment> paymentOptional =
-                paymentRepository.findById(paymentId);
-
+        Map<String, Object> response = new LinkedHashMap<>();
+        Optional<Payment> paymentOptional = paymentRepository.findById(paymentId);
         if (paymentOptional.isEmpty()) {
-
             response.put("status", "FAILED");
-            response.put(
-                    "message",
-                    "Payment not found"
+            response.put("message", "Payment not found"
             );
             response.put("paymentId", paymentId);
-
             return response;
         }
 
         Payment payment = paymentOptional.get();
-        Optional<RecoverySaga> existingSaga = recoverySagaRepository
-                        .findByPaymentIdAndStatus(paymentId, RecoverySagaState.COMPLETED.name()
+        Optional<RecoverySaga> existingSaga = recoverySagaRepository.findByPaymentIdAndStatus(paymentId, RecoverySagaState.COMPLETED.name()
                         );
         if (existingSaga.isPresent()) {
-            RecoverySaga saga =
-                    existingSaga.get();
-            response.put(
-                    "status",
-                    "ALREADY_COMPLETED"
-            );
-            response.put(
-                    "message",
+            RecoverySaga saga = existingSaga.get();
+            response.put("status", "ALREADY_COMPLETED");
+            response.put("message",
                     "Recovery Saga already completed for this payment"
             );
-            response.put(
-                    "sagaId",
-                    saga.getSagaId()
+            response.put("sagaId", saga.getSagaId()
             );
-            response.put(
-                    "paymentId",
+            response.put("paymentId",
                     paymentId
             );
-
             return response;
         }
-
-        RecoverySaga saga =
-                new RecoverySaga();
-
-        String sagaId =
-                "SAGA-" + UUID.randomUUID();
+        RecoverySaga saga = new RecoverySaga();
+        String sagaId = "SAGA-" + UUID.randomUUID();
         LocalDateTime now = LocalDateTime.now();
-
         saga.setSagaId(sagaId);
         saga.setPaymentId(paymentId);
         saga.setCurrentStep(
                 RecoverySagaState.STARTED.name()
         );
-        saga.setStatus(
-                RecoverySagaState.STARTED.name()
+        saga.setStatus(RecoverySagaState.STARTED.name()
         );
 
         saga.setFailureReason(payment.getFailureReason() != null ? payment.getFailureReason().name()
@@ -298,50 +257,36 @@ public class RecoverySagaOrchestrator {
                 saga, null, RecoverySagaState.STARTED
         );
         try {
-            transition(saga,
-                    RecoverySagaState.PAYMENT_VALIDATION
+            transition(saga, RecoverySagaState.PAYMENT_VALIDATION
             );
 
             recoverySagaRepository.save(saga);
-            transition(
-                    saga, RecoverySagaState.AI_DECISION
+            transition(saga, RecoverySagaState.AI_DECISION
             );
 
             recoverySagaRepository.save(saga);
-            AIRecoveryDecisionService.RecoveryDecision decision =
-                    aiRecoveryDecisionService.decide(payment);
-            String action =
-                    decision.action();
+            AIRecoveryDecisionService.RecoveryDecision decision = aiRecoveryDecisionService.decide(payment);
+            String action = decision.action();
             saga.setAction(action);
-            transition(
-                    saga, RecoverySagaState.AI_DECISION_COMPLETED
+            transition(saga, RecoverySagaState.AI_DECISION_COMPLETED
             );
             recoverySagaRepository.save(saga);
-
-            transition(
-                    saga,
+            transition(saga,
                     RecoverySagaState.RECOVERY_EXECUTION
             );
-
             recoverySagaRepository.save(saga);
-
             Map<String, Object> executionResult = aiRecoveryExecutionService.executeRecovery(paymentId);
-
             transition(saga,
                     RecoverySagaState.RECOVERY_EXECUTED
             );
             recoverySagaRepository.save(saga);
-            transition(saga,
-                    RecoverySagaState.COMPLETION
+            transition(saga,RecoverySagaState.COMPLETION
             );
             recoverySagaRepository.save(saga);
-            transition(
-                    saga,
-                    RecoverySagaState.COMPLETED
+            transition(saga, RecoverySagaState.COMPLETED
             );
 
             recoverySagaRepository.save(saga);
-
             response.put(
                     "status", "COMPLETED"
             );
@@ -360,8 +305,7 @@ public class RecoverySagaOrchestrator {
             response.put("executionResult",
                     executionResult
             );
-            response.put(
-                    "startedAt",
+            response.put("startedAt",
                     saga.getStartedAt()
             );
             response.put("completedAt",
@@ -405,39 +349,26 @@ public class RecoverySagaOrchestrator {
                 saga, previousState, nextState
         );
     }
-    private void publishStateEvent(
-            RecoverySaga saga,
-            RecoverySagaState previousState,
-            RecoverySagaState currentState) {
+    private void publishStateEvent(RecoverySaga saga, RecoverySagaState previousState, RecoverySagaState currentState) {
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("eventId", UUID.randomUUID().toString()
-        );
-        payload.put("sagaId", saga.getSagaId()
-        );
-        payload.put("paymentId",
-                saga.getPaymentId()
-        );
+        payload.put("eventId", UUID.randomUUID().toString());
+        payload.put("sagaId", saga.getSagaId());
+        payload.put("paymentId", saga.getPaymentId());
         payload.put(
-                "previousState", previousState != null ? previousState.name()
-                        : null
+                "previousState",
+                previousState != null ? previousState.name() : null
         );
-        payload.put(
-                "currentState", currentState.name()
-        );
-
-        payload.put(
-                "action",
-                saga.getAction()
-        );
-        payload.put(
-                "occurredAt",
-                LocalDateTime.now().toString()
-        );
+        payload.put("currentState", currentState.name());
+        payload.put("action", saga.getAction());
+        payload.put("occurredAt", LocalDateTime.now().toString());
         outboxEventService.createEvent(
                 "RecoverySaga",
                 saga.getSagaId(),
                 "RECOVERY_SAGA_" + currentState.name(),
                 payload
+        );
+        auditTrailService.record(saga.getPaymentId(),
+                saga.getSagaId(), previousState != null ? previousState.name() : null, currentState.name(), saga.getAction()
         );
     }
     private RecoverySagaState parseState(String state) {

@@ -26,7 +26,6 @@ public class RecoveryPlanStepExecutionService {
     private final RecoveryAttemptRepository recoveryAttemptRepository;
     private final RecoveryEventService recoveryEventService;
     private final AIRecoveryDecisionService aiRecoveryDecisionService;
-
     public RecoveryPlanStepExecutionService(
             RecoveryPlanStepRepository recoveryPlanStepRepository,
             PaymentRepository paymentRepository,

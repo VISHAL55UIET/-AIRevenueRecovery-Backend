@@ -27,9 +27,7 @@ public class RecoveryTokenService {
         RecoveryToken recoveryToken = recoveryTokenRepository.findByToken(token)
                         .orElseThrow(() -> new RuntimeException("Recovery link is invalid"));
         if (recoveryToken.isUsed()) {
-            throw new RuntimeException(
-                    "Recovery link has already been used"
-            );
+            throw new RuntimeException("Recovery link has already been used");
         }
         if (recoveryToken.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new RuntimeException("Recovery link has expired");

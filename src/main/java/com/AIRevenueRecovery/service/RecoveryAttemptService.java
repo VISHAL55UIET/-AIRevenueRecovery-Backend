@@ -22,6 +22,7 @@ public class RecoveryAttemptService {
     private final EmailService emailService;
     private final RecoveryEventService recoveryEventService;
 
+
     public RecoveryAttemptService(
             RecoveryAttemptRepository recoveryAttemptRepository,
             PaymentRepository paymentRepository,
@@ -30,7 +31,6 @@ public class RecoveryAttemptService {
             EmailService emailService,
             RetrySchedulingService retrySchedulingService,
             RecoveryEventService recoveryEventService) {
-
         this.recoveryAttemptRepository = recoveryAttemptRepository;
         this.paymentRepository = paymentRepository;
         this.paymentGatewayService = paymentGatewayService;
@@ -106,8 +106,7 @@ public class RecoveryAttemptService {
                         .orElseThrow(() -> new RecoveryAttemptNotFoundException("Recovery attempt not found with ID: " + attemptId));
         Payment payment = attempt.getPayment();
         if (payment == null) {
-            throw new RuntimeException("Payment not found for recovery attempt: " + attemptId
-            );
+            throw new RuntimeException("Payment not found for recovery attempt: " + attemptId);
         }
         if (result == null || result.isBlank()) {throw new RuntimeException("Result is required");
         }
@@ -115,9 +114,7 @@ public class RecoveryAttemptService {
         if (!result.equals("SUCCESS") && !result.equals("FAILED")) {
             throw new RuntimeException("Result must be SUCCESS or FAILED");
         }
-        if ("SUCCESS".equalsIgnoreCase(
-                attempt.getResult())) {
-
+        if ("SUCCESS".equalsIgnoreCase(attempt.getResult())) {
             throw new RuntimeException("Recovery attempt is already successful");
         }
         attempt.setResult(result);
@@ -143,20 +140,17 @@ public class RecoveryAttemptService {
         paymentRepository.save(payment);
         RecoveryAttempt savedAttempt = recoveryAttemptRepository.save(attempt);
         recordEvent(payment, null, "RECOVERY_RESULT_UPDATED",
-                attempt.getAction(), result,
-                "Recovery attempt result updated", "attemptId=" + attemptId
+                attempt.getAction(), result, "Recovery attempt result updated", "attemptId=" + attemptId
         );
         if ("SUCCESS".equals(result)) {
             recordEvent(payment, null,
                     "RECOVERY_SUCCEEDED", attempt.getAction(), "SUCCESS",
-                    "Payment successfully recovered", "attemptId=" + attemptId
-            );
+                    "Payment successfully recovered", "attemptId=" + attemptId);
         } else {
             recordEvent(payment,
                     null, "RECOVERY_FAILED",
                     attempt.getAction(),
-                    "FAILED",
-                    "Recovery attempt failed",
+                    "FAILED", "Recovery attempt failed",
                     "attemptId=" + attemptId
             );
         }
@@ -167,12 +161,8 @@ public class RecoveryAttemptService {
         RecoveryAttempt attempt = recoveryAttemptRepository.findById(attemptId).orElseThrow(() ->
                                 new RecoveryAttemptNotFoundException("Recovery attempt not found with ID: " + attemptId));
         if (attempt.getPayment() == null) {
-            throw new RuntimeException(
-                    "Payment not found for recovery attempt: "
-                            + attemptId
-            );
+            throw new RuntimeException("Payment not found for recovery attempt: " + attemptId);
         }
-
         Long paymentId = attempt.getPayment().getId();
         Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new RuntimeException("Payment not found with ID: " + paymentId));
         if (attempt.getFailureReason() == null) {
@@ -259,18 +249,12 @@ public class RecoveryAttemptService {
             } else {
 
                 attempt.setResult("FAILED");
-
-                int currentAttempt =
-                        attempt.getAttemptNumber();
-
+                int currentAttempt = attempt.getAttemptNumber();
                 if (currentAttempt < MAX_RETRY_ATTEMPTS) {
                     payment.setStatus(PaymentStatus.RETRYING);
                     LocalDateTime nextRetry = retrySchedulingService.calculateNextRetry(payment.getFailureReason(), currentAttempt);
-                    payment.setNextRetryAt(nextRetry
-                    );
-                } else {
-                    payment.setStatus(PaymentStatus.FAILED
-                    );
+                    payment.setNextRetryAt(nextRetry);
+                } else {payment.setStatus(PaymentStatus.FAILED);
                     payment.setNextRetryAt(null);
                 }
                 recordEvent(payment, null, "PAYMENT_RETRY_FAILED",
@@ -286,11 +270,9 @@ public class RecoveryAttemptService {
             Payment payment, RecoveryPlan recoveryPlan,
             String eventType, String action, String status, String message, String metadata) {
         try {
-            recoveryEventService.recordEvent(payment, recoveryPlan, eventType,
-                    action, status, message, metadata);
+            recoveryEventService.recordEvent(payment, recoveryPlan, eventType, action, status, message, metadata);
         } catch (Exception exception) {
-            System.err.println("Failed to record recovery event: " + exception.getMessage()
-            );
+            System.err.println("Failed to record recovery event: " + exception.getMessage());
         }
     }
 }

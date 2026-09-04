@@ -34,7 +34,8 @@ public class SecurityConfig {
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
             CustomUserDetailsService userDetailsService,
-            OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler) {
+            OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler
+    ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.userDetailsService = userDetailsService;
         this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
@@ -42,15 +43,20 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationProvider authenticationProvider(
-            org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+            org.springframework.security.crypto.password.PasswordEncoder passwordEncoder
+    ) {
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider(userDetailsService);
+
         provider.setPasswordEncoder(passwordEncoder);
+
         return provider;
     }
 
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration configuration) throws Exception {
+            AuthenticationConfiguration configuration
+    ) throws Exception {
         return configuration.getAuthenticationManager();
     }
 
@@ -61,21 +67,26 @@ public class SecurityConfig {
     ) throws Exception {
 
         http
+                .csrf(csrf -> csrf.disable())
 
-                .csrf(csrf ->
-                        csrf.disable()
-                )
+                .cors(cors -> cors.configurationSource(
+                        corsConfigurationSource()
+                ))
 
-                .cors(cors ->
-                        cors.configurationSource(
-                                corsConfigurationSource()
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.IF_REQUIRED
                         )
                 )
 
-                .sessionManagement(session -> session.sessionCreationPolicy(
-                        SessionCreationPolicy.IF_REQUIRED))
-
                 .authorizeHttpRequests(auth -> auth
+
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.OPTIONS,
+                                "/**"
+                        )
+                        .permitAll()
+
                         .requestMatchers("/api/auth/**")
                         .permitAll()
 
@@ -94,18 +105,14 @@ public class SecurityConfig {
                         )
                         .permitAll()
 
-                        .requestMatchers(
-                                "/actuator/**"
-                        )
+                        .requestMatchers("/actuator/**")
                         .permitAll()
 
                         .anyRequest()
                         .authenticated()
                 )
 
-                .authenticationProvider(
-                        authenticationProvider
-                )
+                .authenticationProvider(authenticationProvider)
 
                 .oauth2Login(oauth2 ->
                         oauth2.successHandler(
@@ -146,12 +153,20 @@ public class SecurityConfig {
         );
 
         configuration.setAllowedHeaders(
-                List.of("*")
+                List.of(
+                        "Authorization",
+                        "Content-Type",
+                        "Accept",
+                        "Origin",
+                        "X-Requested-With"
+                )
         );
 
-        configuration.setAllowCredentials(
-                true
+        configuration.setExposedHeaders(
+                List.of("Authorization")
         );
+
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
