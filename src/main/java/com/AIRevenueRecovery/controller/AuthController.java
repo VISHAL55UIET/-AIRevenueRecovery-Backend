@@ -35,11 +35,6 @@ public class AuthController {
                 .status(HttpStatus.CREATED)
                 .body(response);
     }
-
-    // ==============================
-    // LOGIN
-    // ==============================
-
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(
             @Valid @RequestBody LoginRequest request

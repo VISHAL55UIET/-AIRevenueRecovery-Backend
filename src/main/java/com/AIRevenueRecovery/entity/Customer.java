@@ -1,23 +1,32 @@
+
 package com.AIRevenueRecovery.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 @Entity
+@Table(name = "customers")
 public class Customer {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String customerId;
+
     private String name;
+
     private String email;
+
+    @Column(nullable = false)
+    private boolean optedOut = false;
+
     public Customer() {
     }
+
     public Long getId() {
         return id;
     }
+
     public String getCustomerId() {
         return customerId;
     }
@@ -40,5 +49,13 @@ public class Customer {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public boolean isOptedOut() {
+        return optedOut;
+    }
+
+    public void setOptedOut(boolean optedOut) {
+        this.optedOut = optedOut;
     }
 }

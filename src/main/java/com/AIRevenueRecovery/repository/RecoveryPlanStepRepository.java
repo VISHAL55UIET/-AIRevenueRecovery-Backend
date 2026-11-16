@@ -1,6 +1,7 @@
 package com.AIRevenueRecovery.repository;
 
 import com.AIRevenueRecovery.entity.RecoveryPlanStep;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -72,5 +73,18 @@ public interface RecoveryPlanStepRepository
     int resetStaleProcessingSteps(
             @Param("threshold") LocalDateTime threshold,
             @Param("now") LocalDateTime now
+    );
+
+    // --- Niche wale dono methods (Pageable type ke sath) ---
+
+    List<RecoveryPlanStep> findByStatusOrderByUpdatedAtAsc(
+            String status,
+            Pageable pageable
+    );
+
+    List<RecoveryPlanStep> findByStatusAndScheduledAtLessThanEqualOrderByScheduledAtAsc(
+            String status,
+            LocalDateTime scheduledAt,
+            Pageable pageable
     );
 }

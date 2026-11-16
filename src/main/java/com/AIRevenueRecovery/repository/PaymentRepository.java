@@ -1,20 +1,31 @@
+
 package com.AIRevenueRecovery.repository;
 
 import com.AIRevenueRecovery.entity.FailureReason;
 import com.AIRevenueRecovery.entity.Payment;
 import com.AIRevenueRecovery.entity.PaymentStatus;
+
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
+
     List<Payment> findByStatus(PaymentStatus status);
+
     List<Payment> findByFailureReason(FailureReason failureReason);
+
     List<Payment> findByCustomerId(String customerId);
+
     List<Payment> findTop10ByOrderByCreatedAtDesc();
+
     @Query("""
             SELECT p
             FROM Payment p
@@ -40,25 +51,26 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             @Param("status") PaymentStatus status,
             @Param("cutoffTime") LocalDateTime cutoffTime
     );
+
     @Query("""
-        SELECT
-            FUNCTION('DATE', p.createdAt) AS date,
-            COALESCE(SUM(p.amount), 0) AS revenue,
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN p.status = com.AIRevenueRecovery.entity.PaymentStatus.SUCCESS
-                        THEN p.amount
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS recovered
-        FROM Payment p
-        WHERE p.createdAt >= :startDate
-        GROUP BY FUNCTION('DATE', p.createdAt)
-        ORDER BY FUNCTION('DATE', p.createdAt)
-        """)
+            SELECT
+                FUNCTION('DATE', p.createdAt),
+                COALESCE(SUM(p.amount), 0),
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN p.status = com.AIRevenueRecovery.entity.PaymentStatus.SUCCESS
+                            THEN p.amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                )
+            FROM Payment p
+            WHERE p.createdAt >= :startDate
+            GROUP BY FUNCTION('DATE', p.createdAt)
+            ORDER BY FUNCTION('DATE', p.createdAt)
+            """)
     List<Object[]> getDailyRevenueAnalytics(
             @Param("startDate") LocalDateTime startDate
     );
@@ -68,14 +80,20 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             FROM Payment p
             WHERE p.status = :status
             """)
-    Double getTotalAmountByStatus(@Param("status") PaymentStatus status);
+    Double getTotalAmountByStatus(
+            @Param("status") PaymentStatus status
+    );
+
     long countByStatus(PaymentStatus status);
+
     @Query("""
             SELECT COUNT(p)
             FROM Payment p
             WHERE p.status IN :statuses
             """)
-    long countByStatuses(@Param("statuses") List<PaymentStatus> statuses);
+    long countByStatuses(
+            @Param("statuses") List<PaymentStatus> statuses
+    );
 
     @Query("""
             SELECT COUNT(DISTINCT p.customerId)
@@ -87,9 +105,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             )
             """)
     long countActiveCustomers();
-    long countByCreatedAtGreaterThanEqual(
-            LocalDateTime startDate
-    );
+
+    long countByCreatedAtGreaterThanEqual(LocalDateTime startDate);
 
     long countByStatusAndCreatedAtGreaterThanEqual(
             PaymentStatus status,
@@ -106,6 +123,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             @Param("statuses") List<PaymentStatus> statuses,
             @Param("startDate") LocalDateTime startDate
     );
+
     @Query("""
             SELECT COALESCE(SUM(p.amount), 0)
             FROM Payment p
@@ -116,7 +134,6 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             @Param("status") PaymentStatus status,
             @Param("startDate") LocalDateTime startDate
     );
-
 
     /**
      * Active customers within selected period.
@@ -134,40 +151,38 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     long countActiveCustomersByPeriod(
             @Param("startDate") LocalDateTime startDate
     );
+
     @Query(value = """
-        SELECT
-            DATE_FORMAT(p.created_at, '%Y-%m-01') AS month,
-
-            COALESCE(SUM(p.amount), 0) AS revenue,
-
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN p.status = 'SUCCESS'
-                        THEN p.amount
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS recovered
-
-        FROM payments p
-
-        WHERE p.created_at >=
-              DATE_SUB(
-                  DATE_FORMAT(CURDATE(), '%Y-%m-01'),
-                  INTERVAL 6 MONTH
-              )
-
-        GROUP BY DATE_FORMAT(
-            p.created_at,
-            '%Y-%m-01'
-        )
-
-        ORDER BY DATE_FORMAT(
-            p.created_at,
-            '%Y-%m-01'
-        )
-        """, nativeQuery = true)
+            SELECT
+                DATE_FORMAT(p.created_at, '%Y-%m-01') AS month,
+                COALESCE(SUM(p.amount), 0) AS revenue,
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN p.status = 'SUCCESS'
+                            THEN p.amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS recovered
+            FROM payments p
+            WHERE p.created_at >=
+                DATE_SUB(
+                    DATE_FORMAT(CURDATE(), '%Y-%m-01'),
+                    INTERVAL 6 MONTH
+                )
+            GROUP BY DATE_FORMAT(p.created_at, '%Y-%m-01')
+            ORDER BY DATE_FORMAT(p.created_at, '%Y-%m-01')
+            """, nativeQuery = true)
     List<Object[]> getMonthlyRevenueAnalytics();
+
+    /**
+     * Fetch payment with pessimistic write lock.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Payment p WHERE p.id = :paymentId")
+    Optional<Payment> findByIdForUpdate(
+            @Param("paymentId") Long paymentId
+    );
 }
